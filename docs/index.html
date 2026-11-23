@@ -141,6 +141,10 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <div id="reqs"></div>
       </div>
       <div class="card">
+        <h2>🌐 בקשות אתרים <span id="sreqCount" class="badge hide"></span></h2>
+        <div id="sreqs"></div>
+      </div>
+      <div class="card">
         <h2>📱 הנגן</h2>
         <div id="devInfo" class="muted"></div>
       </div>
@@ -262,8 +266,11 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <div id="siteList"></div>
         <div class="row" style="margin-top:8px">
           <input id="siteNew" placeholder="למשל kipa.co.il" onkeydown="if(event.key==='Enter')addSite()">
-          <button class="g sm" style="margin-inline-start:8px" onclick="addSite()">+ הוסף</button>
+          <button class="g sm" style="margin-inline-start:8px" onclick="addSite()">+ הוסף קבוע</button>
         </div>
+        <div id="grantList" style="margin-top:10px"></div>
+        <button class="r sm" style="width:100%;margin-top:10px" onclick="blockBrowsers()">🚫 חסום את כל הדפדפנים בנגן</button>
+        <p class="muted" style="margin-top:6px">אחרי חסימת הדפדפנים, הילד גולש רק דרך "דפדפן בטוח" ומבקש ממך כל אתר</p>
       </div>
       <div class="card">
         <h2>🔑 קוד הורה</h2>
@@ -368,7 +375,7 @@ function start(){
   $("connect").classList.add("hide"); $("app").classList.remove("hide");
   ["cfg","st","req","apps","info"].forEach(n=>listen(n));
   listen("chat", '?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=100');
-  listen("loc"); listen("photo");
+  listen("loc"); listen("photo"); listen("sitereq");
   if(window.ChasimaApp) try{ ChasimaApp.setDevice(ID); }catch(e){}
   const h = location.hash.replace("#",""); if(h) tab(h);
   setInterval(()=>{ renderStatus(); renderMode(); }, 15000);
@@ -377,7 +384,8 @@ function start(){
 
 /* ---------- תצוגה ---------- */
 function render(node){
-  if(node==="cfg"){ renderMode(); renderApps(); renderTime(); renderSettings(); renderReqs(); renderSecure(); renderSites(); }
+  if(node==="cfg"){ renderMode(); renderApps(); renderTime(); renderSettings(); renderReqs(); renderSecure(); renderSites(); renderSiteReqs(); }
+  if(node==="sitereq") renderSiteReqs();
   if(node==="loc") renderSecure();
   if(node==="photo") renderPhoto();
   if(node==="chat") renderChat();
@@ -602,13 +610,51 @@ function renderPhoto(){
     : `<p class="muted">אין עדיין תמונה</p>`;
 }
 
+/* ---------- בקשות אתרים ---------- */
+function renderSiteReqs(){
+  const r=S.sitereq||{}, ks=Object.keys(r).sort((a,b)=>(r[b].t||0)-(r[a].t||0));
+  $("sreqCount").textContent=ks.length; $("sreqCount").classList.toggle("hide", !ks.length);
+  $("sreqs").innerHTML = ks.length ? ks.map(k=>`
+    <div class="app"><div class="n"><b>${esc(r[k].host||k.replace(/,/g,"."))}</b>
+      <span class="muted">${r[k].msg?"💬 "+esc(r[k].msg)+" · ":""}${ago(r[k].t)}</span></div></div>
+    <div class="grid2" style="grid-template-columns:repeat(4,1fr);margin:6px 0 4px">
+      <button class="sm" onclick="grantSite('${k}',5)">5 ד׳</button>
+      <button class="sm" onclick="grantSite('${k}',10)">10 ד׳</button>
+      <button class="sm" onclick="grantSite('${k}',30)">30 ד׳</button>
+      <button class="g sm" onclick="grantSite('${k}',0)">קבוע</button>
+    </div>
+    <button class="r sm" style="width:100%;margin-bottom:10px" onclick="denySite('${k}')">✖️ דחה</button>`).join("")
+    : `<p class="muted">אין בקשות אתרים</p>`;
+}
+async function grantSite(k, min){
+  const host=k.replace(/,/g,".");
+  try{
+    if(min>0){ await fb("PATCH", `d/${ID}/cfg/grants`, {[k]: Date.now()+min*60000}); toast(`✅ ${host} נפתח ל-${min} ד׳`); }
+    else { const a=sitesArr().slice(); if(!a.includes(host)) a.push(host); await fb("PATCH", `d/${ID}/cfg`, {sites:a}); toast(`✅ ${host} אושר לתמיד`); }
+    await fb("DELETE", `d/${ID}/sitereq/${k}`);
+  }catch(e){ toast("❌ "+e.message); }
+}
+async function denySite(k){ try{ await fb("DELETE", `d/${ID}/sitereq/${k}`); toast("✖️ נדחה"); }catch(e){ toast("❌ "+e.message); } }
+function blockBrowsers(){
+  const apps=S.apps||{}, o={}; let n=0;
+  const BR=["browser","chrome","firefox","opera","duckduckgo","brave","samsung.*internet","uc","yandex","edge"];
+  for(const k in apps){ const p=(apps[k].p||"").toLowerCase(), nm=(apps[k].n||"").toLowerCase();
+    if(BR.some(b=>new RegExp(b).test(p)) || nm.includes("דפדפן") || nm.includes("browser") || nm.includes("internet") || nm.includes("chrome")){ o[k]="block"; n++; } }
+  if(!n) return toast("לא נמצאו דפדפנים ברשימה");
+  fb("PATCH", `d/${ID}/cfg/rules`, o).then(()=>toast(`🚫 נחסמו ${n} דפדפנים`)).catch(e=>toast("❌ "+e.message));
+}
+
 /* ---------- אתרים מאושרים ---------- */
 function sitesArr(){ return ((S.cfg||{}).sites)||[]; }
 function renderSites(){
   const a=sitesArr();
-  $("siteList").innerHTML = a.length ? a.map((x,i)=>`<div class="app"><div class="n"><b>${esc(x)}</b></div><button class="r sm" onclick="delSite(${i})">🗑️</button></div>`).join("")
-    : `<p class="muted">עדיין אין אתרים מאושרים</p>`;
+  $("siteList").innerHTML = a.length ? a.map((x,i)=>`<div class="app"><div class="n"><b>${esc(x)} <span class="muted">· קבוע</span></b></div><button class="r sm" onclick="delSite(${i})">🗑️</button></div>`).join("")
+    : `<p class="muted">עדיין אין אתרים קבועים</p>`;
+  const g=(S.cfg||{}).grants||{}, now=Date.now();
+  const act=Object.keys(g).filter(k=>g[k]>now);
+  $("grantList").innerHTML = act.length ? "<b style='font-size:14px'>פתוחים זמנית:</b>"+act.map(k=>`<div class="app"><div class="n"><b>${esc(k.replace(/,/g,"."))}</b><span class="muted">עוד ${Math.ceil((g[k]-now)/60000)} ד׳</span></div><button class="r sm" onclick="revokeGrant('${k}')">נעל</button></div>`).join("") : "";
 }
+function revokeGrant(k){ fb("PATCH", `d/${ID}/cfg/grants`, {[k]:0}).then(()=>toast("🔒 נסגר")).catch(e=>toast("❌ "+e.message)); }
 async function addSite(){
   let v=$("siteNew").value.trim(); if(!v) return;
   v=v.replace(/^https?:\/\//,"").replace(/\/.*$/,"").replace(/^www\./,"");

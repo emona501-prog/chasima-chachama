@@ -113,9 +113,8 @@ public class BlockActivity extends Activity {
                 }).start();
             });
         }
-        org.json.JSONArray sites = Cfg.cfg(this).optJSONArray("sites");
-        if (Rules.isBrowser(this, pkg) && sites != null && sites.length() > 0) {
-            Ui.button(this, l, "🌐 דפדפן בטוח (אתרים מאושרים)", Ui.GREEN, v -> {
+        if (Rules.isBrowser(this, pkg)) {
+            Ui.button(this, l, "🌐 דפדפן בטוח / בקשת אתר", Ui.GREEN, v -> {
                 startActivity(new Intent(this, WebActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 finish();
             });
