@@ -64,6 +64,28 @@ public class ChatActivity extends Activity {
         title.setGravity(Gravity.CENTER);
         root.addView(title);
 
+        final TextView updSt = new TextView(this);
+        updSt.setTextColor(0xFFBBF7D0);
+        updSt.setTextSize(13);
+        updSt.setGravity(Gravity.CENTER);
+
+        Button upd = new Button(this);
+        upd.setText("🔄 עדכן אפליקציה");
+        upd.setAllCaps(false);
+        upd.setTextColor(Color.WHITE);
+        upd.setTextSize(14);
+        GradientDrawable ug = new GradientDrawable();
+        ug.setColor(0x33FFFFFF);
+        ug.setCornerRadius(Ui.dp(this, 12));
+        upd.setBackground(ug);
+        upd.setOnClickListener(v -> Updater.checkAndUpdate(this, updSt::setText, false));
+        LinearLayout.LayoutParams up = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        up.gravity = Gravity.CENTER;
+        up.topMargin = Ui.dp(this, 4);
+        root.addView(upd, up);
+        root.addView(updSt);
+
         scroll = new ScrollView(this);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);

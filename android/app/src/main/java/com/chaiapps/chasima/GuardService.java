@@ -65,6 +65,7 @@ public class GuardService extends AccessibilityService {
             // גיבוי: מושכים את ההגדרות וההודעות מההורה כל 6 שניות, גם אם ההאזנה החיה נקטעה
             io.execute(() -> pullCfg("d/" + Cfg.deviceId(GuardService.this) + "/cfg"));
             io.execute(GuardService.this::pollChat);
+            maybeAutoUpdate();
             if (System.currentTimeMillis() - lastBeat > 45000) beat();
             main.postDelayed(this, 6000);
         }
@@ -339,6 +340,18 @@ public class GuardService extends AccessibilityService {
                 gotChat(k, all.optJSONObject(k));
             }
         } catch (Exception ignored) {}
+    }
+
+    /** בדיקת עדכון אוטומטית כל 6 שעות. */
+    private void maybeAutoUpdate() {
+        long now = System.currentTimeMillis();
+        long last = Cfg.p(this).getLong("updCheck", 0);
+        if (now - last < 6 * 3600000L) return;
+        Cfg.p(this).edit().putLong("updCheck", now).apply();
+        Updater.checkAndUpdate(this, msg -> io.execute(() -> {
+            try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"upd\":" + JSONObject.quote(msg) + "}"); }
+            catch (Exception ignored) {}
+        }), true);
     }
 
     private void gotChat(String key, JSONObject m) {
