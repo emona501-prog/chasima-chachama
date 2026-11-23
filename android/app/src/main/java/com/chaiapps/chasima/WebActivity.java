@@ -1,15 +1,12 @@
 package com.chaiapps.chasima;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
-import android.view.Gravity;
-import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -36,8 +33,7 @@ public class WebActivity extends Activity {
     private final Runnable guard = new Runnable() {
         @Override
         public void run() {
-            // אם ההרשאה פגה באמצע הגלישה – חוזרים למסך הבקשות
-            if (web != null && web.getUrl() != null && !ok(web.getUrl())) showMenu();
+            if (web != null && web.getUrl() != null && !ok(web.getUrl())) showMenu(null);
             else h.postDelayed(this, 20000);
         }
     };
@@ -47,7 +43,7 @@ public class WebActivity extends Activity {
         super.onCreate(b);
         String open = getIntent() != null ? getIntent().getStringExtra("open") : null;
         if (open != null && ok(open)) openSite(open);
-        else showMenu();
+        else showMenu(null);
     }
 
     // ---------- רשימת אתרים מותרים כרגע ----------
@@ -106,8 +102,9 @@ public class WebActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
-                if (ok(r.getUrl().toString())) return false;
-                showMenu();
+                String u = r.getUrl().toString();
+                if (ok(u)) return false;
+                showMenu(u);   // ניסה אתר חסום – עוברים למסך בקשה עם האתר הזה מוכן
                 return true;
             }
 
@@ -125,9 +122,10 @@ public class WebActivity extends Activity {
     }
 
     // ---------- מסך בקשות ----------
-    private void showMenu() {
+    private void showMenu(String pre) {
         h.removeCallbacks(guard);
         web = null;
+        final String preHost = pre == null ? "" : host(pre);
         LinearLayout l = Ui.screen(this);
         Ui.text(this, l, "🌐 דפדפן בטוח", 24, Color.WHITE, true);
 
@@ -143,12 +141,17 @@ public class WebActivity extends Activity {
             }
         }
 
+        if (!preHost.isEmpty()) {
+            Ui.text(this, l, "האתר " + preHost + " חסום — אפשר לבקש אותו מאבא בלחיצה 👇", 15, 0xFFFDE68A, true);
+        }
+
         LinearLayout c = Ui.card(this, l);
-        Ui.text(this, c, "בקשת אתר חדש מאבא", 16, Color.WHITE, true);
+        Ui.text(this, c, "בקשת אתר מאבא", 16, Color.WHITE, true);
         final EditText url = new EditText(this);
         url.setHint("כתובת האתר, למשל kipa.co.il");
         url.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
         style(url);
+        if (!preHost.isEmpty()) url.setText(preHost);
         c.addView(url);
         final EditText why = new EditText(this);
         why.setHint("למה? (לא חובה)");
@@ -202,14 +205,14 @@ public class WebActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (web == null) showMenu();
+        if (web == null) showMenu(null);
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (web != null && web.canGoBack()) web.goBack();
-        else if (web != null) showMenu();
+        else if (web != null) showMenu(null);
         else super.onBackPressed();
     }
 }

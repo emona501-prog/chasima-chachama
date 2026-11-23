@@ -44,7 +44,7 @@ public class GuardService extends AccessibilityService {
     private long settingsTapsAt = 0;
     private long lastBeat = 0;
     private volatile Ringtone alarmRt;
-    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0, lastHandledBanner = 0;
+    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0, lastHandledBanner = 0, lastHandledUpd = 0;
 
     private final BroadcastReceiver pkgReceiver = new BroadcastReceiver() {
         @Override
@@ -227,6 +227,16 @@ public class GuardService extends AccessibilityService {
                         } catch (Exception ignored) {}
                     });
                 }
+            }
+        }
+        long ur = cfg.optLong("updateReq", 0);
+        if (ur > lastHandledUpd) {
+            lastHandledUpd = ur;
+            if (ur > 0 && now - ur < 10 * 60000L) {
+                main.post(() -> Updater.run(this, msg -> io.execute(() -> {
+                    try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"upd\":" + JSONObject.quote(msg) + "}"); }
+                    catch (Exception ignored) {}
+                })));
             }
         }
         long lr = cfg.optLong("locateReq", 0);

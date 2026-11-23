@@ -264,6 +264,12 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
     <!-- הגדרות -->
     <div id="t-set" class="hide">
       <div class="card">
+        <h2>📲 עדכון הנגן מרחוק</h2>
+        <p class="muted">הנגן יוריד לבד את הגרסה החדשה. בסוף צריך לחיצה אחת על "התקן" בנגן (דרישת אנדרואיד).</p>
+        <button class="p" style="width:100%" onclick="updateDevice()">📲 עדכן את הנגן עכשיו</button>
+        <div id="updMsg" class="muted" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
         <h2>⚙️ הגדרות הנגן</h2>
         <p class="muted">ההגדרות והתקנת אפליקציות חסומות בנגן. אפשר לפתוח אותן לזמן קצר:</p>
         <button style="width:100%" onclick="openSettings(10)">פתח הגדרות בנגן ל־10 דקות</button>
@@ -446,6 +452,7 @@ function renderStatus(){
   if(st.seen && !on && st.guard!==false) a += `<div class="alert" style="background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.5)">הנגן לא דיווח ${ago(st.seen)} – אולי כבוי או בלי אינטרנט</div>`;
   $("alerts").innerHTML = a;
   const info = S.info||{};
+  if($("updMsg")) $("updMsg").textContent = st.upd ? ("מצב עדכון: " + st.upd) : "";
   $("devInfo").innerHTML = `
     <div>📍 עכשיו פתוח: <b style="color:#fff">${esc(st.an||"מסך הבית")}</b></div>
     <div>⏱️ זמן מסך היום: <b style="color:#fff">${fmtMin(usedToday())}</b>${limitTxt()}</div>
@@ -755,6 +762,7 @@ const saveMsg = () => patchCfg({msg:$("msg").value.trim()}, "✅ נשמר");
 const saveName = () => patchCfg({name:$("kidName2").value.trim()}, "✅ נשמר");
 function changePin(){ const p=$("pin2").value.trim(); if(!/^\d{4,8}$/.test(p)) return toast("4–8 ספרות"); patchCfg({pin:p}, "✅ הקוד שונה"); $("pin2").value=""; }
 const openSettings = m => patchCfg({settingsUntil: Date.now()+m*60000}, `⚙️ ההגדרות בנגן פתוחות ל־${m} דקות`);
+function updateDevice(){ patchCfg({updateReq: Date.now()}, "📲 שלחתי לנגן לעדכן… (עד דקה)"); }
 
 function tab(t){
   if(!$("t-"+t)) t="home";

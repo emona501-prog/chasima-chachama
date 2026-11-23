@@ -1,6 +1,5 @@
 package com.chaiapps.chasima;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
@@ -25,7 +24,7 @@ final class Updater {
         void say(String msg);
     }
 
-    static void run(final Activity a, final Progress p) {
+    static void run(final android.content.Context a, final Progress p) {
         // פותחים את ההתקנה לכמה דקות כדי שהשומר לא יחסום את המתקין
         Cfg.setLocalSettingsUntil(a, System.currentTimeMillis() + 5 * 60000L);
         new Thread(() -> {
@@ -65,7 +64,7 @@ final class Updater {
         }).start();
     }
 
-    private static void install(Activity a, File apk) {
+    private static void install(android.content.Context a, File apk) {
         try {
             Uri uri = FileProvider.getUriForFile(a, a.getPackageName() + ".fp", apk);
             Intent i = new Intent(Intent.ACTION_VIEW);
