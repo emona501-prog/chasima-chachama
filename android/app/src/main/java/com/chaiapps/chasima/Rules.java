@@ -19,6 +19,16 @@ final class Rules {
                 || pkg.equals("com.google.android.packageinstaller");
     }
 
+    static boolean isBrowser(Context c, String pkg) {
+        try {
+            android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("http://example.com"));
+            for (android.content.pm.ResolveInfo r : c.getPackageManager().queryIntentActivities(i, 0))
+                if (r.activityInfo != null && pkg.equals(r.activityInfo.packageName)) return true;
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     static boolean isPhone(String pkg) {
         return pkg.equals("com.android.dialer") || pkg.equals("com.google.android.dialer")
                 || pkg.equals("com.android.phone") || pkg.equals("com.android.server.telecom")

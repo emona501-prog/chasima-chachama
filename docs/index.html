@@ -207,6 +207,41 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
       </div>
     </div>
 
+    <!-- איתור ואבטחה -->
+    <div id="t-secure" class="hide">
+      <div class="card">
+        <h2>📍 מיקום הנגן</h2>
+        <div id="locInfo" class="muted">—</div>
+        <div class="grid2" style="margin-top:10px">
+          <button onclick="locateNow()">🔄 אתר עכשיו</button>
+          <a id="mapBtn" class="hide" style="display:block;text-align:center;text-decoration:none"><button class="g" style="width:100%">🗺️ פתח במפה</button></a>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🔊 אזעקה</h2>
+        <p class="muted">משמיע צליל חזק בנגן (גם במצב שקט) כדי לאתר אותו או להבריח גנב</p>
+        <div class="grid2">
+          <button class="y" onclick="alarmOn()">🔊 הפעל אזעקה</button>
+          <button class="ghost" onclick="alarmOff()">הפסק</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <div style="flex:1"><b>🔒 נעילה מלאה מרחוק</b><div class="muted">נועל את כל הנגן עם הודעה על המסך</div></div>
+          <label class="sw"><input type="checkbox" id="lostOn" onchange="saveLost()"><i></i></label>
+        </div>
+        <textarea id="lostMsg" rows="2" style="margin-top:10px" placeholder="הטלפון אבד, אנא התקשרו 054-0000000"></textarea>
+        <div style="height:8px"></div>
+        <button class="sm" onclick="saveLost()">שמירת ההודעה</button>
+      </div>
+      <div class="card">
+        <h2>📸 צילום מהנגן</h2>
+        <p class="muted">מצלם מהמצלמה הקדמית – לראות מי מחזיק בנגן. גם אוטומטית אחרי 3 ניסיונות קוד שגויים.</p>
+        <button class="p" style="width:100%" onclick="takePhoto()">📸 צלם עכשיו</button>
+        <div id="photoBox" style="margin-top:10px"></div>
+      </div>
+    </div>
+
     <!-- הגדרות -->
     <div id="t-set" class="hide">
       <div class="card">
@@ -220,6 +255,15 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <textarea id="msg" rows="2" placeholder="למשל: אחרי שיעורי בית 😊"></textarea>
         <div style="height:8px"></div>
         <button class="p sm" onclick="saveMsg()">שמירה</button>
+      </div>
+      <div class="card">
+        <h2>🌐 דפדפן בטוח – אתרים מאושרים</h2>
+        <p class="muted">אם הדפדפן חסום, הילד יוכל לפתוח רק את האתרים שתוסיף כאן (דרך האייקון "דפדפן בטוח" בנגן)</p>
+        <div id="siteList"></div>
+        <div class="row" style="margin-top:8px">
+          <input id="siteNew" placeholder="למשל kipa.co.il" onkeydown="if(event.key==='Enter')addSite()">
+          <button class="g sm" style="margin-inline-start:8px" onclick="addSite()">+ הוסף</button>
+        </div>
       </div>
       <div class="card">
         <h2>🔑 קוד הורה</h2>
@@ -246,6 +290,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
     <a data-t="apps" onclick="tab('apps')"><i>📱</i>אפליקציות</a>
     <a data-t="chat" onclick="tab('chat')"><i>💬</i>צ'אט<span id="chatBadge" class="badge hide"></span></a>
     <a data-t="time" onclick="tab('time')"><i>⏰</i>זמן מסך</a>
+    <a data-t="secure" onclick="tab('secure')"><i>🔎</i>איתור<span id="secBadge" class="badge hide"></span></a>
     <a data-t="set" onclick="tab('set')"><i>⚙️</i>הגדרות</a>
   </nav>
 </section>
@@ -323,6 +368,7 @@ function start(){
   $("connect").classList.add("hide"); $("app").classList.remove("hide");
   ["cfg","st","req","apps","info"].forEach(n=>listen(n));
   listen("chat", '?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=100');
+  listen("loc"); listen("photo");
   if(window.ChasimaApp) try{ ChasimaApp.setDevice(ID); }catch(e){}
   const h = location.hash.replace("#",""); if(h) tab(h);
   setInterval(()=>{ renderStatus(); renderMode(); }, 15000);
@@ -331,7 +377,9 @@ function start(){
 
 /* ---------- תצוגה ---------- */
 function render(node){
-  if(node==="cfg"){ renderMode(); renderApps(); renderTime(); renderSettings(); renderReqs(); }
+  if(node==="cfg"){ renderMode(); renderApps(); renderTime(); renderSettings(); renderReqs(); renderSecure(); renderSites(); }
+  if(node==="loc") renderSecure();
+  if(node==="photo") renderPhoto();
   if(node==="chat") renderChat();
   if(node==="st") renderUsage();
   if(node==="st"||node==="info") renderStatus();
@@ -525,6 +573,51 @@ async function sendChat(){
   catch(e){ $("chatIn").value=t; toast("❌ "+e.message); }
 }
 
+/* ---------- איתור ואבטחה ---------- */
+function renderSecure(){
+  const lc=S.loc||{};
+  if(lc.lat!=null){
+    $("locInfo").innerHTML = `מיקום אחרון: <b style="color:#fff">${(+lc.lat).toFixed(5)}, ${(+lc.lng).toFixed(5)}</b><br>דיוק ~${lc.acc||"?"} מ׳ · ${ago(lc.t)}`;
+    $("mapBtn").href = `https://www.google.com/maps/search/?api=1&query=${lc.lat},${lc.lng}`;
+    $("mapBtn").classList.remove("hide");
+  } else {
+    const st=S.st||{};
+    $("locInfo").textContent = st.loc===false ? "הרשאת מיקום כבויה בנגן" : "אין עדיין מיקום. לחץ \"אתר עכשיו\" כשהנגן מחובר.";
+    $("mapBtn").classList.add("hide");
+  }
+  if(document.activeElement!==$("lostMsg")){
+    const l=(S.cfg||{}).lost||{}; $("lostOn").checked=!!l.on; $("lostMsg").value=l.msg||"";
+  }
+  renderPhoto();
+}
+const locateNow = () => patchCfg({locateReq: Date.now()}, "🔄 מבקש מיקום מהנגן… (עד דקה)");
+const alarmOn = () => patchCfg({alarm: Date.now()}, "🔊 האזעקה מופעלת בנגן");
+const alarmOff = () => patchCfg({alarm: 0}, "האזעקה הופסקה");
+function saveLost(){ patchCfg({lost:{on:$("lostOn").checked, msg:$("lostMsg").value.trim()}}, $("lostOn").checked?"🔒 הנגן ננעל מרחוק":"🔓 הנעילה בוטלה"); }
+const takePhoto = () => patchCfg({photoReq: Date.now()}, "📸 מבקש תמונה מהנגן… (עד דקה)");
+function renderPhoto(){
+  const ph=S.photo||{};
+  $("photoBox").innerHTML = ph.img
+    ? `<img src="data:image/jpeg;base64,${ph.img}" style="width:100%;border-radius:12px"><div class="muted" style="margin-top:4px">${ph.r==="theft"?"⚠️ אחרי קוד שגוי":"צולם ע\"י בקשה"} · ${ago(ph.t)}</div>`
+    : `<p class="muted">אין עדיין תמונה</p>`;
+}
+
+/* ---------- אתרים מאושרים ---------- */
+function sitesArr(){ return ((S.cfg||{}).sites)||[]; }
+function renderSites(){
+  const a=sitesArr();
+  $("siteList").innerHTML = a.length ? a.map((x,i)=>`<div class="app"><div class="n"><b>${esc(x)}</b></div><button class="r sm" onclick="delSite(${i})">🗑️</button></div>`).join("")
+    : `<p class="muted">עדיין אין אתרים מאושרים</p>`;
+}
+async function addSite(){
+  let v=$("siteNew").value.trim(); if(!v) return;
+  v=v.replace(/^https?:\/\//,"").replace(/\/.*$/,"").replace(/^www\./,"");
+  const a=sitesArr().slice(); if(a.includes(v)) return toast("כבר קיים");
+  a.push(v); $("siteNew").value="";
+  await patchCfg({sites:a}, "✅ האתר נוסף");
+}
+function delSite(i){ const a=sitesArr().slice(); a.splice(i,1); patchCfg({sites:a}, "האתר הוסר"); }
+
 /* ---------- הגדרות ---------- */
 function renderSettings(){
   const c=S.cfg||{};
@@ -539,7 +632,7 @@ const openSettings = m => patchCfg({settingsUntil: Date.now()+m*60000}, `⚙️ 
 
 function tab(t){
   if(!$("t-"+t)) t="home";
-  ["home","apps","chat","time","set"].forEach(x=>$("t-"+x).classList.toggle("hide", x!==t));
+  ["home","apps","chat","secure","time","set"].forEach(x=>$("t-"+x).classList.toggle("hide", x!==t));
   $("chatBar").classList.toggle("hide", t!=="chat");
   if(t==="chat"){ markRead(); setTimeout(()=>scrollTo(0, document.body.scrollHeight),50); return; }
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));

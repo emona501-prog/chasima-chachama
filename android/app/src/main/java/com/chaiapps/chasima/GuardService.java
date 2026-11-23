@@ -7,6 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Vibrator;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.accessibility.AccessibilityEvent;
@@ -36,6 +41,8 @@ public class GuardService extends AccessibilityService {
     private long lastBlockAt = 0;
     private String lastBlockPkg = "";
     private long lastBeat = 0;
+    private volatile Ringtone alarmRt;
+    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0;
 
     private final BroadcastReceiver pkgReceiver = new BroadcastReceiver() {
         @Override
@@ -136,6 +143,13 @@ public class GuardService extends AccessibilityService {
     }
 
     private void check(String pkg) {
+        if (Cfg.setupDone(this)) {
+            JSONObject lost = Cfg.cfg(this).optJSONObject("lost");
+            if (lost != null && lost.optBoolean("on", false)) {
+                showLost();
+                return;
+            }
+        }
         String reason = Rules.check(this, pkg, pkg.equals(current) ? currentCls : "", launchable, exempt);
         if (reason == null) return;
         long now = System.currentTimeMillis();
@@ -150,6 +164,69 @@ public class GuardService extends AccessibilityService {
                 .putExtra("name", Apps.label(this, pkg))
                 .putExtra("reason", reason);
         main.postDelayed(() -> startActivity(i), 150);
+    }
+
+    private long lastLostAt = 0;
+
+    private void showLost() {
+        long now = System.currentTimeMillis();
+        if (now - lastLostAt < 1500) return;
+        lastLostAt = now;
+        performGlobalAction(GLOBAL_ACTION_HOME);
+        main.postDelayed(() -> startActivity(new Intent(this, LostActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)), 120);
+    }
+
+    /** פקודות מיידיות מההורה: אזעקה, צילום, איתור. */
+    private void handleCmds() {
+        JSONObject cfg = Cfg.cfg(this);
+        long a = cfg.optLong("alarm", 0);
+        long now = System.currentTimeMillis();
+        if (a > lastHandledAlarm) {
+            lastHandledAlarm = a;
+            if (a > 0 && now - a < 5 * 60000L) startAlarm();
+            else stopAlarm();
+        }
+        long ph = cfg.optLong("photoReq", 0);
+        if (ph > lastHandledPhoto) {
+            lastHandledPhoto = ph;
+            if (ph > 0 && now - ph < 5 * 60000L) io.execute(() -> StealthCam.capture(this, "parent"));
+        }
+        long lr = cfg.optLong("locateReq", 0);
+        if (lr > lastHandledLoc) {
+            lastHandledLoc = lr;
+            if (lr > 0 && now - lr < 5 * 60000L) io.execute(() -> {
+                JSONObject lc = Loc.last(this);
+                try { if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString()); } catch (Exception ignored) {}
+            });
+        }
+    }
+
+    private void startAlarm() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (am != null) am.setStreamVolume(AudioManager.STREAM_ALARM,
+                    am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0);
+            if (alarmRt != null && alarmRt.isPlaying()) return;
+            Uri u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (u == null) u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+            alarmRt = RingtoneManager.getRingtone(this, u);
+            if (alarmRt != null) {
+                alarmRt.setStreamType(AudioManager.STREAM_ALARM);
+                alarmRt.play();
+            }
+            Vibrator vb = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (vb != null) vb.vibrate(new long[]{0, 600, 400}, 0);
+            main.postDelayed(this::stopAlarm, 30000);
+        } catch (Exception ignored) {}
+    }
+
+    private void stopAlarm() {
+        try { if (alarmRt != null) alarmRt.stop(); } catch (Exception ignored) {}
+        try {
+            Vibrator vb = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (vb != null) vb.cancel();
+        } catch (Exception ignored) {}
     }
 
     /** האזנה חיה להגדרות שההורה משנה. */
@@ -220,6 +297,7 @@ public class GuardService extends AccessibilityService {
             Cfg.saveCfg(this, json);
             Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).apply();
             if (!old.equals(json)) recheck();
+            handleCmds();
         } catch (Exception ex) {
             Cfg.p(this).edit().putString("cfgErr", String.valueOf(ex.getMessage())).apply();
         }
@@ -247,6 +325,9 @@ public class GuardService extends AccessibilityService {
                 st.put("rules", rl == null ? 0 : rl.length());
                 st.put("err", Cfg.p(this).getString("cfgErr", ""));
                 st.put("day", Cfg.today());
+                st.put("loc", Loc.allowed(this));
+                JSONObject lc = Loc.last(this);
+                if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString());
                 st.put("alert", "");
                 Fb.patch("d/" + Cfg.deviceId(this) + "/st", st.toString());
             } catch (Exception ignored) {}
@@ -260,6 +341,7 @@ public class GuardService extends AccessibilityService {
     public void onDestroy() {
         stop.set(true);
         instance = null;
+        stopAlarm();
         main.removeCallbacksAndMessages(null);
         try { unregisterReceiver(pkgReceiver); } catch (Exception ignored) {}
         final Context c = getApplicationContext();

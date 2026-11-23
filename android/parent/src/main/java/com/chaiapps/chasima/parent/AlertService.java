@@ -57,6 +57,7 @@ public class AlertService extends Service {
         new Thread(() -> loop(Fb.url("d/" + id + "/req"), this::onReq)).start();
         new Thread(() -> loop(Fb.url("d/" + id + "/chat") + Fb.lastQ(1), this::onChat)).start();
         new Thread(() -> loop(Fb.url("d/" + id + "/st/alert"), this::onAlert)).start();
+        new Thread(() -> loop(Fb.url("d/" + id + "/photo/t"), this::onPhoto)).start();
     }
 
     @Override
@@ -185,6 +186,14 @@ public class AlertService extends Service {
         if (a.equals(last)) return;
         p().edit().putString("alertSeen", a).apply();
         if (!a.isEmpty()) show("⚠️ " + a, "בדוק את הנגן", "home");
+    }
+
+    private synchronized void onPhoto(String path, Object data) {
+        String t = String.valueOf(data instanceof Number ? ((Number) data).longValue() : "");
+        String last = p().getString("photoSeen", "");
+        if (t.equals(last) || t.equals("null") || t.isEmpty()) return;
+        p().edit().putString("photoSeen", t).apply();
+        if (!last.isEmpty()) show("📸 תמונה חדשה מהנגן", "לחץ כדי לראות מי מחזיק בנגן", "secure");
     }
 
     // ---------- התראות ----------

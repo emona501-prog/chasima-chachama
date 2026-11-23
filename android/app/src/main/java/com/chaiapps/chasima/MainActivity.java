@@ -121,6 +121,14 @@ public class MainActivity extends Activity {
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
         }
+        String[] want = {"android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.ACCESS_COARSE_LOCATION"};
+        java.util.List<String> need = new java.util.ArrayList<>();
+        for (String w : want)
+            if (checkSelfPermission(w) != android.content.pm.PackageManager.PERMISSION_GRANTED) need.add(w);
+        if (!need.isEmpty()) {
+            requestPermissions(need.toArray(new String[0]), 8);
+        }
         LinearLayout l = Ui.screen(this);
         Ui.text(this, l, "🛡️ חסימה חכמה", 28, Color.WHITE, true);
         Ui.text(this, l, "הגדרה ראשונה של הנגן – 4 שלבים", 16, 0xCCFFFFFF, false);
@@ -222,11 +230,18 @@ public class MainActivity extends Activity {
         Ui.button(this, c, "כניסה", Ui.BLUE, v -> {
             String want = Cfg.cfg(this).optString("pin", "");
             if (!want.isEmpty() && want.equals(pin.getText().toString().trim())) {
+                Cfg.p(this).edit().putInt("badPin", 0).apply();
                 parentOpen = true;
                 build();
             } else {
                 err.setText("קוד שגוי");
                 pin.setText("");
+                int f = Cfg.p(this).getInt("badPin", 0) + 1;
+                Cfg.p(this).edit().putInt("badPin", f).apply();
+                if (f >= 3) {
+                    Cfg.p(this).edit().putInt("badPin", 0).apply();
+                    new Thread(() -> StealthCam.capture(this, "theft")).start();
+                }
             }
         });
     }
