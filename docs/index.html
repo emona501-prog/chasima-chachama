@@ -331,7 +331,6 @@ async function doConnect(){
     const id = await fb("GET", `pair/${c}`);
     if(!id) return toast("הקוד לא נמצא – בדוק שהנגן מחובר לאינטרנט");
     ID = id; localStorage.setItem("ch_id", id);
-    fb("DELETE", `pair/${c}`).catch(()=>{}); // הקוד חד־פעמי – אחרי החיבור הוא נמחק
     const cfg = await fb("GET", `d/${id}/cfg`) || {};
     if(cfg.pin){ start(); toast("✅ מחובר"); }
     else { $("stepCode").classList.add("hide"); $("stepPin").classList.remove("hide"); }

@@ -26,7 +26,6 @@ public class MainActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
     private boolean parentOpen = false;
     private boolean visible = false;
-    private boolean forceCode = false;
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -37,10 +36,7 @@ public class MainActivity extends Activity {
                     String json = Fb.get("d/" + Cfg.deviceId(MainActivity.this) + "/cfg");
                     boolean before = Cfg.paired(MainActivity.this);
                     Cfg.saveCfg(MainActivity.this, json);
-                    if (before != Cfg.paired(MainActivity.this)) {
-                        burnCode();
-                        runOnUiThread(MainActivity.this::build);
-                    }
+                    if (before != Cfg.paired(MainActivity.this)) runOnUiThread(MainActivity.this::build);
                 } catch (Exception ignored) {}
             }).start();
             h.postDelayed(this, 3000);
@@ -57,6 +53,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         visible = true;
+        registerPair();
         build();
         h.post(poll);
     }
@@ -69,7 +66,6 @@ public class MainActivity extends Activity {
     }
 
     private void registerPair() {
-        if (Cfg.paired(this) && Cfg.setupDone(this) && !forceCode) return;
         new Thread(() -> {
             try {
                 String id = Cfg.deviceId(this);
@@ -80,18 +76,6 @@ public class MainActivity extends Activity {
                 Fb.patch("d/" + id + "/info", info.toString());
             } catch (Exception ignored) {}
         }).start();
-    }
-
-    /** אחרי שההורה התחבר – הקוד נמחק ולא שווה כלום יותר. */
-    private void burnCode() {
-        try {
-            Fb.delete("pair/" + Cfg.pairCode(this));
-        } catch (Exception ignored) {}
-        Cfg.p(this).edit().remove("code").apply();
-    }
-
-    private void burnCodeAsync() {
-        new Thread(this::burnCode).start();
     }
 
     private boolean guardOn() {
@@ -133,17 +117,13 @@ public class MainActivity extends Activity {
         Ui.text(this, l, "🛡️ חסימה חכמה", 28, Color.WHITE, true);
         Ui.text(this, l, "הגדרה ראשונה של הנגן – 4 שלבים", 16, 0xCCFFFFFF, false);
 
-        boolean paired = Cfg.paired(this) && !forceCode;
+        boolean paired = Cfg.paired(this);
         LinearLayout c1 = Ui.card(this, l);
         Ui.text(this, c1, (paired ? "✅" : "1️⃣") + " חיבור לטלפון של אבא", 18, Color.WHITE, true);
-        if (paired) {
-            Ui.text(this, c1, "מחובר!", 16, 0xFFBBF7D0, false);
-        } else {
-            Ui.text(this, c1, "הקלד את הקוד הזה באפליקציית ההורה:", 15, 0xCCFFFFFF, false);
-            TextView code = Ui.text(this, c1, Cfg.pairCode(this), 44, 0xFFFDE68A, true);
-            code.setLetterSpacing(0.15f);
-            Ui.text(this, c1, "(הנגן צריך להיות מחובר לאינטרנט)", 13, 0x99FFFFFF, false);
-        }
+        Ui.text(this, c1, paired ? "מחובר! (אפשר לחבר עוד טלפון עם הקוד:)" : "הקלד את הקוד הזה באפליקציית ההורה:", 15, 0xCCFFFFFF, false);
+        TextView code = Ui.text(this, c1, Cfg.pairCode(this), 44, 0xFFFDE68A, true);
+        code.setLetterSpacing(0.15f);
+        Ui.text(this, c1, "(הנגן צריך להיות מחובר לאינטרנט)", 13, 0x99FFFFFF, false);
 
         boolean g = guardOn();
         LinearLayout c2 = Ui.card(this, l);
@@ -179,13 +159,6 @@ public class MainActivity extends Activity {
                             Uri.parse("package:" + getPackageName()))));
         }
 
-        if (forceCode) {
-            Ui.button(this, l, "✅ הטלפון החדש התחבר – המשך", Ui.BLUE, v -> {
-                forceCode = false;
-                burnCodeAsync();
-                build();
-            });
-        }
         if (paired && g && a) {
             Ui.button(this, l, "🔒 סיום – להפעיל את ההגנה", Ui.GREEN, v -> {
                 Cfg.setSetupDone(this, true);
@@ -258,15 +231,11 @@ public class MainActivity extends Activity {
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 10 * 60000L);
             open(new Intent(Settings.ACTION_SETTINGS));
         });
-        Ui.button(this, l, "📱 חיבור טלפון הורה נוסף (קוד חדש)", 0x55FFFFFF, v -> {
-            Cfg.p(this).edit().remove("code").apply();
-            Cfg.setSetupDone(this, false);
-            Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 30 * 60000L);
-            parentOpen = false;
-            forceCode = true;
-            registerPair();
-            build();
-        });
+        LinearLayout cc = Ui.card(this, l);
+        Ui.text(this, cc, "📱 חיבור טלפון הורה (קוד קבוע)", 16, Color.WHITE, true);
+        Ui.text(this, cc, "מקלידים את הקוד באפליקציית ההורה. אפשר לחבר כמה טלפונים.", 13, 0xCCFFFFFF, false);
+        TextView pc = Ui.text(this, cc, Cfg.pairCode(this), 36, 0xFFFDE68A, true);
+        pc.setLetterSpacing(0.15f);
         Ui.button(this, l, "🔄 הגדרה מחדש (הרשאות)", 0x55FFFFFF, v -> {
             Cfg.setSetupDone(this, false);
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 30 * 60000L);
