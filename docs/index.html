@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1b3d">
+<title>חסימה חכמה – הורה</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<script src="config.js"></script>
+<style>
+:root{--bg1:#0f1b3d;--bg2:#1e3a8a;--card:rgba(255,255,255,.08);--line:rgba(255,255,255,.12);--txt:#fff;--dim:rgba(255,255,255,.65);
+--green:#22c55e;--red:#ef4444;--gold:#f59e0b;--blue:#3b82f6;--purple:#a855f7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",Rubik,Arial,sans-serif;color:var(--txt);
+background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed}
+body{padding-bottom:84px}
+header{position:sticky;top:0;z-index:5;padding:14px 16px 10px;background:rgba(15,27,61,.85);backdrop-filter:blur(10px);
+display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+header h1{font-size:19px;margin:0;flex:1}
+.pill{font-size:12px;padding:5px 10px;border-radius:99px;background:var(--card);white-space:nowrap}
+.pill.on{background:rgba(34,197,94,.2);color:#bbf7d0}.pill.off{background:rgba(239,68,68,.2);color:#fecaca}
+main{padding:14px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:6px}
+.muted{color:var(--dim);font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:inherit;border:0;border-radius:14px;padding:12px 10px;font-weight:700;color:#fff;background:var(--blue);cursor:pointer}
+button:active{transform:scale(.97)}
+button.g{background:var(--green)}button.r{background:var(--red)}button.y{background:var(--gold);color:#1a1a1a}
+button.p{background:var(--purple)}button.ghost{background:var(--card);border:1px solid var(--line)}
+button.sm{padding:7px 10px;font-size:13px;border-radius:10px}
+input,textarea,select{font:inherit;width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:#fff}
+input[type=time]{width:auto;padding:8px;color-scheme:dark}
+.big{font-size:30px;text-align:center;letter-spacing:6px}
+.mode{display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;margin-bottom:10px;font-weight:700}
+.mode.normal{background:rgba(59,130,246,.2)}.mode.lock{background:rgba(239,68,68,.25)}.mode.free{background:rgba(34,197,94,.22)}
+.app{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.app:last-child{border-bottom:0}
+.app img,.ph{width:40px;height:40px;border-radius:10px;flex:none;background:#ffffff22}
+.app .n{flex:1;min-width:0}.app .n b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.seg{display:flex;background:rgba(0,0,0,.3);border-radius:10px;padding:3px;gap:2px;flex:none}
+.seg span{font-size:12px;padding:6px 8px;border-radius:8px;color:var(--dim);font-weight:700}
+.seg span.on.block{background:var(--red);color:#fff}.seg span.on.allow{background:var(--blue);color:#fff}.seg span.on.always{background:var(--green);color:#fff}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:10px 0;padding-bottom:4px}
+.chip{flex:none;padding:7px 12px;border-radius:99px;background:var(--card);font-size:13px;border:1px solid var(--line)}
+.chip.on{background:#fff;color:#0f1b3d;font-weight:700}
+.badge{background:var(--red);color:#fff;border-radius:99px;font-size:11px;padding:1px 6px;margin-inline-start:4px}
+.day{padding:10px 0;border-bottom:1px solid var(--line)}.day:last-child{border-bottom:0}
+.win{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.sw{position:relative;width:50px;height:28px;flex:none}.sw input{display:none}
+.sw i{position:absolute;inset:0;border-radius:99px;background:#ffffff33;transition:.2s}
+.sw i:after{content:"";position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw input:checked+i{background:var(--green)}.sw input:checked+i:after{right:25px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:rgba(15,27,61,.95);border-top:1px solid var(--line);
+padding:6px 6px calc(6px + env(safe-area-inset-bottom));backdrop-filter:blur(10px);z-index:6}
+nav a{flex:1;text-align:center;font-size:12px;color:var(--dim);text-decoration:none;padding:4px 0;border-radius:12px}
+nav a i{display:block;font-style:normal;font-size:22px}
+nav a.on{color:#fff;background:var(--card)}
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#111827;padding:10px 16px;border-radius:12px;
+font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1px solid var(--line)}
+.toast.show{opacity:1}
+.hide{display:none!important}
+.alert{background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.5);padding:10px;border-radius:12px;margin-bottom:10px;font-weight:700}
+footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
+</style>
+</head>
+<body>
+
+<!-- ====== חיבור ====== -->
+<section id="connect" class="hide">
+  <main style="padding-top:40px">
+    <div style="text-align:center;font-size:64px">🛡️</div>
+    <h1 style="text-align:center;margin:6px 0">חסימה חכמה</h1>
+    <p class="muted" style="text-align:center">שליטה מלאה בנגן של הילד – מהטלפון שלך</p>
+    <div class="card" id="stepCode">
+      <h2>1. חיבור לנגן</h2>
+      <p class="muted">פתח את "חסימה חכמה" בנגן והקלד כאן את הקוד בן 6 הספרות שמופיע שם:</p>
+      <input id="code" class="big" inputmode="numeric" maxlength="6" placeholder="000000">
+      <div style="height:10px"></div>
+      <button class="g" style="width:100%" onclick="doConnect()">חיבור</button>
+    </div>
+    <div class="card hide" id="stepPin">
+      <h2>2. קוד הורה</h2>
+      <p class="muted">בחר קוד סודי (4 ספרות ומעלה). איתו נכנסים לתפריט ההורה בנגן עצמו.</p>
+      <input id="newPin" class="big" inputmode="numeric" maxlength="8" placeholder="••••">
+      <div style="height:10px"></div>
+      <input id="kidName" placeholder="שם הילד (לא חובה)">
+      <div style="height:10px"></div>
+      <button class="g" style="width:100%" onclick="setFirstPin()">סיום</button>
+    </div>
+  </main>
+</section>
+
+<!-- ====== אפליקציה ====== -->
+<section id="app" class="hide">
+  <header>
+    <h1 id="title">🛡️ חסימה חכמה</h1>
+    <span id="online" class="pill">…</span>
+  </header>
+  <main>
+    <!-- בית -->
+    <div id="t-home">
+      <div id="alerts"></div>
+      <div class="card">
+        <div id="modeBox" class="mode normal">…</div>
+        <div class="grid2">
+          <button class="r" onclick="setMode('lock',0)">🔒 נעל עכשיו</button>
+          <button onclick="setMode('normal',0)">↩️ מצב רגיל</button>
+        </div>
+        <p class="muted" style="margin:12px 0 6px">⏱️ זמן חופשי (כל מה שמותר – גם מחוץ לשעות):</p>
+        <div class="grid2" style="grid-template-columns:repeat(4,1fr)">
+          <button class="g sm" onclick="setMode('free',15)">15 ד׳</button>
+          <button class="g sm" onclick="setMode('free',30)">30 ד׳</button>
+          <button class="g sm" onclick="setMode('free',60)">שעה</button>
+          <button class="g sm" onclick="setMode('free',120)">שעתיים</button>
+        </div>
+        <p class="muted" style="margin:12px 0 6px">🔒 נעילה זמנית:</p>
+        <div class="grid2" style="grid-template-columns:repeat(4,1fr)">
+          <button class="r sm" onclick="setMode('lock',30)">30 ד׳</button>
+          <button class="r sm" onclick="setMode('lock',60)">שעה</button>
+          <button class="r sm" onclick="setMode('lock',180)">3 שעות</button>
+          <button class="r sm" onclick="lockTomorrow()">עד מחר</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📩 בקשות <span id="reqCount" class="badge hide"></span></h2>
+        <div id="reqs"></div>
+      </div>
+      <div class="card">
+        <h2>📱 הנגן</h2>
+        <div id="devInfo" class="muted"></div>
+      </div>
+    </div>
+
+    <!-- אפליקציות -->
+    <div id="t-apps" class="hide">
+      <input id="q" placeholder="🔍 חיפוש אפליקציה" oninput="renderApps()">
+      <div class="chips" id="chips"></div>
+      <div class="card" style="padding:4px 14px" id="appList"></div>
+      <div class="grid2">
+        <button class="ghost sm" onclick="bulk('allow')">אשר את כל הממתינים</button>
+        <button class="ghost sm" onclick="bulk('block')">חסום את כל הממתינים</button>
+      </div>
+      <p class="muted" style="margin-top:12px">🟥 חסום – לא נפתח אף פעם · 🟦 מותר – רק בשעות המסך · 🟩 תמיד – גם מחוץ לשעות ובנעילה</p>
+    </div>
+
+    <!-- שעות -->
+    <div id="t-time" class="hide">
+      <div class="card">
+        <div class="row">
+          <div style="flex:1"><b>הגבלת שעות פעילה</b><div class="muted">אפליקציות "מותר" נפתחות רק בשעות האלה</div></div>
+          <label class="sw"><input type="checkbox" id="schedOn" onchange="saveSched()"><i></i></label>
+        </div>
+      </div>
+      <div class="card" id="days"></div>
+      <button class="ghost" style="width:100%" onclick="copySunday()">📋 העתק את יום ראשון לכל הימים</button>
+    </div>
+
+    <!-- הגדרות -->
+    <div id="t-set" class="hide">
+      <div class="card">
+        <h2>⚙️ הגדרות הנגן</h2>
+        <p class="muted">ההגדרות והתקנת אפליקציות חסומות בנגן. אפשר לפתוח אותן לזמן קצר:</p>
+        <button style="width:100%" onclick="openSettings(10)">פתח הגדרות בנגן ל־10 דקות</button>
+      </div>
+      <div class="card">
+        <h2>💬 הודעה לילד</h2>
+        <p class="muted">תופיע במסך החסימה</p>
+        <textarea id="msg" rows="2" placeholder="למשל: אחרי שיעורי בית 😊"></textarea>
+        <div style="height:8px"></div>
+        <button class="p sm" onclick="saveMsg()">שמירה</button>
+      </div>
+      <div class="card">
+        <h2>🔑 קוד הורה</h2>
+        <input id="pin2" inputmode="numeric" maxlength="8" placeholder="קוד חדש">
+        <div style="height:8px"></div>
+        <button class="sm" onclick="changePin()">שינוי קוד</button>
+      </div>
+      <div class="card">
+        <h2>👦 שם הילד</h2>
+        <input id="kidName2" placeholder="שם">
+        <div style="height:8px"></div>
+        <button class="sm" onclick="saveName()">שמירה</button>
+      </div>
+      <div class="card">
+        <h2>🔌 חיבור</h2>
+        <p class="muted" id="devId"></p>
+        <button class="r sm" onclick="disconnect()">ניתוק מהנגן הזה (בטלפון הזה בלבד)</button>
+      </div>
+      <footer>חסימה חכמה · חי אפליקציות</footer>
+    </div>
+  </main>
+  <nav>
+    <a data-t="home" class="on" onclick="tab('home')"><i>🏠</i>בית<span id="navBadge" class="badge hide"></span></a>
+    <a data-t="apps" onclick="tab('apps')"><i>📱</i>אפליקציות</a>
+    <a data-t="time" onclick="tab('time')"><i>⏰</i>שעות</a>
+    <a data-t="set" onclick="tab('set')"><i>⚙️</i>הגדרות</a>
+  </nav>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DB = (window.DB_URL || "").replace(/\/+$/, "");
+const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+let ID = localStorage.getItem("ch_id") || "";
+const S = { cfg: {}, st: {}, req: {}, apps: {}, info: {} };
+let filter = "all", streams = [];
+
+const $ = s => document.getElementById(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const key = p => p.replace(/\./g, ",");
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("show"),2200)}
+
+async function fb(method, path, body){
+  const r = await fetch(`${DB}/${path}.json`, {method, body: body===undefined?undefined:JSON.stringify(body)});
+  if(!r.ok) throw new Error("שגיאת חיבור "+r.status);
+  return r.json();
+}
+const patchCfg = async (o, msg) => { try{ await fb("PATCH", `d/${ID}/cfg`, o); if(msg) toast(msg); } catch(e){ toast("❌ "+e.message); } };
+
+/* ---------- חיבור ---------- */
+async function doConnect(){
+  const c = $("code").value.trim();
+  if(!/^\d{6}$/.test(c)) return toast("צריך 6 ספרות");
+  try{
+    const id = await fb("GET", `pair/${c}`);
+    if(!id) return toast("הקוד לא נמצא – בדוק שהנגן מחובר לאינטרנט");
+    ID = id; localStorage.setItem("ch_id", id);
+    const cfg = await fb("GET", `d/${id}/cfg`) || {};
+    if(cfg.pin){ start(); toast("✅ מחובר"); }
+    else { $("stepCode").classList.add("hide"); $("stepPin").classList.remove("hide"); }
+  }catch(e){ toast("❌ "+e.message); }
+}
+async function setFirstPin(){
+  const pin = $("newPin").value.trim();
+  if(!/^\d{4,8}$/.test(pin)) return toast("קוד של 4–8 ספרות");
+  const days = {}; for(let d=0;d<7;d++) days[d]=[{f:"16:00",t:"19:00"}];
+  await patchCfg({pin, mode:"normal", until:0, sched:{on:false, days}, name: $("kidName").value.trim()});
+  start(); toast("✅ הנגן מחובר! עכשיו סיים את השלבים בנגן");
+}
+function disconnect(){
+  if(!confirm("לנתק את הטלפון הזה מהנגן? (ההגנה בנגן ממשיכה לעבוד)")) return;
+  localStorage.removeItem("ch_id"); location.reload();
+}
+
+/* ---------- האזנה חיה ---------- */
+function setAt(obj, path, val){
+  const parts = path.split("/").filter(Boolean);
+  if(!parts.length) return val;
+  let o = obj = (obj && typeof obj==="object") ? obj : {};
+  for(let i=0;i<parts.length-1;i++){ if(!o[parts[i]]||typeof o[parts[i]]!=="object") o[parts[i]]={}; o=o[parts[i]]; }
+  if(val===null) delete o[parts.at(-1)]; else o[parts.at(-1)] = val;
+  return obj;
+}
+function listen(node){
+  const es = new EventSource(`${DB}/d/${ID}/${node}.json`);
+  const h = (type) => (ev) => {
+    const {path, data} = JSON.parse(ev.data);
+    if(type==="put") S[node] = setAt(S[node], path, data) || {};
+    else for(const k in (data||{})) S[node] = setAt(S[node], path.replace(/\/$/,"")+"/"+k, data[k]);
+    render(node);
+  };
+  es.addEventListener("put", h("put"));
+  es.addEventListener("patch", h("patch"));
+  streams.push(es);
+}
+function start(){
+  $("connect").classList.add("hide"); $("app").classList.remove("hide");
+  ["cfg","st","req","apps","info"].forEach(listen);
+  setInterval(()=>{ renderStatus(); renderMode(); }, 15000);
+  $("devId").textContent = "מזהה נגן: " + ID;
+}
+
+/* ---------- תצוגה ---------- */
+function render(node){
+  if(node==="cfg"){ renderMode(); renderApps(); renderSched(); renderSettings(); renderReqs(); }
+  if(node==="st"||node==="info") renderStatus();
+  if(node==="req") renderReqs();
+  if(node==="apps"){ renderApps(); renderReqs(); }
+}
+function ago(t){
+  if(!t) return "אף פעם";
+  const s = Math.round((Date.now()-t)/1000);
+  if(s<60) return "עכשיו"; if(s<3600) return `לפני ${Math.round(s/60)} דק׳`;
+  if(s<86400) return `לפני ${Math.round(s/3600)} שעות`; return new Date(t).toLocaleDateString("he-IL");
+}
+function renderStatus(){
+  const st = S.st||{}, on = st.seen && Date.now()-st.seen < 3*60000 && st.guard!==false;
+  $("online").textContent = on ? "🟢 מחובר" : "🔴 לא מחובר";
+  $("online").className = "pill " + (on?"on":"off");
+  const name = (S.cfg||{}).name; $("title").textContent = "🛡️ " + (name ? "הנגן של "+name : "חסימה חכמה");
+  let a = "";
+  if(st.guard===false) a += `<div class="alert">⚠️ השומר בנגן כובה! ההגנה לא פעילה</div>`;
+  if(st.admin===false) a += `<div class="alert">⚠️ ההגנה מפני מחיקה כבויה בנגן</div>`;
+  if(st.seen && !on && st.guard!==false) a += `<div class="alert" style="background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.5)">הנגן לא דיווח ${ago(st.seen)} – אולי כבוי או בלי אינטרנט</div>`;
+  $("alerts").innerHTML = a;
+  const info = S.info||{};
+  $("devInfo").innerHTML = `
+    <div>📍 עכשיו פתוח: <b style="color:#fff">${esc(st.an||"מסך הבית")}</b></div>
+    <div>🔋 סוללה: ${st.bat!=null? st.bat+"%":"—"} · עדכון אחרון: ${ago(st.seen)}</div>
+    <div>📱 ${esc(info.model||"")} · אנדרואיד ${esc(info.android||"")} · גרסה ${esc(st.v||"")}</div>`;
+}
+function curMode(){
+  const c=S.cfg||{}; let m=c.mode||"normal";
+  if(m!=="normal" && c.until>0 && c.until<Date.now()) m="normal";
+  return m;
+}
+function renderMode(){
+  const c=S.cfg||{}, m=curMode(), box=$("modeBox");
+  const left = c.until>Date.now() ? ` – עד ${new Date(c.until).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})}` : "";
+  box.className = "mode "+m;
+  box.innerHTML = m==="lock" ? `🔒 הנגן נעול${left}<div class="muted" style="font-weight:400">רק אפליקציות "תמיד" פתוחות</div>`
+    : m==="free" ? `🎉 זמן חופשי${left}`
+    : `✅ מצב רגיל${(c.sched||{}).on ? " · לפי שעות" : ""}`;
+}
+async function setMode(mode, min){
+  await patchCfg({mode, until: min ? Date.now()+min*60000 : 0},
+    mode==="lock" ? "🔒 הנגן ננעל" : mode==="free" ? "🎉 זמן חופשי הופעל" : "↩️ חזרה למצב רגיל");
+}
+function lockTomorrow(){
+  const t=new Date(); t.setDate(t.getDate()+1); t.setHours(7,0,0,0);
+  patchCfg({mode:"lock", until:t.getTime()}, "🔒 נעול עד מחר ב־7:00");
+}
+
+function appName(k){ const a=(S.apps||{})[k]; return a? a.n : k.replace(/,/g,"."); }
+function appIcon(k){ const a=(S.apps||{})[k]; return a&&a.i ? `<img src="data:image/png;base64,${a.i}">` : `<div class="ph"></div>`; }
+function rule(k){ return ((S.cfg||{}).rules||{})[k] || ""; }
+
+function renderReqs(){
+  const r = S.req||{}, ks = Object.keys(r).sort((a,b)=>(r[b].t||0)-(r[a].t||0));
+  $("reqCount").textContent = ks.length; $("navBadge").textContent = ks.length;
+  $("reqCount").classList.toggle("hide", !ks.length); $("navBadge").classList.toggle("hide", !ks.length);
+  $("reqs").innerHTML = ks.length ? ks.map(k=>`
+    <div class="app">${appIcon(k)}
+      <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
+    </div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 10px">
+      <button class="sm" onclick="answer('${k}','allow')">✔️ מותר</button>
+      <button class="g sm" onclick="answer('${k}','always')">⭐ תמיד</button>
+      <button class="r sm" onclick="answer('${k}','block')">✖️ דחה</button>
+    </div>`).join("") : `<p class="muted">אין בקשות חדשות 👍</p>`;
+}
+async function answer(k, val){
+  try{
+    await fb("PATCH", `d/${ID}/cfg/rules`, {[k]: val});
+    await fb("DELETE", `d/${ID}/req/${k}`);
+    toast(val==="block" ? "✖️ נדחה" : "✅ אושר");
+  }catch(e){ toast("❌ "+e.message); }
+}
+
+function renderApps(){
+  const apps = S.apps||{}, q = ($("q").value||"").trim().toLowerCase();
+  const cnt = {all:0,pending:0,allow:0,always:0,block:0};
+  let list = Object.keys(apps).map(k=>({k, n:apps[k].n||k, r:rule(k)||"pending"}));
+  list.forEach(a=>{cnt.all++;cnt[a.r]++});
+  const labels = {all:"הכל",pending:"⏳ ממתינים",allow:"🟦 מותר",always:"🟩 תמיד",block:"🟥 חסום"};
+  $("chips").innerHTML = Object.keys(labels).map(f=>`<span class="chip ${filter===f?"on":""}" onclick="filter='${f}';renderApps()">${labels[f]} ${cnt[f]}</span>`).join("");
+  list = list.filter(a=>(filter==="all"||a.r===filter) && (!q || a.n.toLowerCase().includes(q)))
+             .sort((a,b)=>(a.r==="pending"?0:1)-(b.r==="pending"?0:1) || a.n.localeCompare(b.n,"he"));
+  $("appList").innerHTML = list.length ? list.map(a=>`
+    <div class="app">${appIcon(a.k)}
+      <div class="n"><b>${esc(a.n)}</b>${a.r==="pending"?'<span class="muted">⏳ ממתין לאישור (חסום)</span>':""}</div>
+      <div class="seg">
+        <span class="block ${a.r==="block"?"on":""}" onclick="setRule('${a.k}','block')">חסום</span>
+        <span class="allow ${a.r==="allow"?"on":""}" onclick="setRule('${a.k}','allow')">מותר</span>
+        <span class="always ${a.r==="always"?"on":""}" onclick="setRule('${a.k}','always')">תמיד</span>
+      </div>
+    </div>`).join("") : `<p class="muted" style="padding:10px 0">${Object.keys(apps).length?"אין תוצאות":"ממתין לרשימת האפליקציות מהנגן…"}</p>`;
+}
+async function setRule(k, v){
+  S.cfg.rules = Object.assign({}, S.cfg.rules, {[k]:v}); renderApps();
+  try{ await fb("PATCH", `d/${ID}/cfg/rules`, {[k]:v}); if((S.req||{})[k]) await fb("DELETE", `d/${ID}/req/${k}`); }
+  catch(e){ toast("❌ "+e.message); }
+}
+async function bulk(v){
+  const o={}; Object.keys(S.apps||{}).forEach(k=>{ if(!rule(k)) o[k]=v; });
+  if(!Object.keys(o).length) return toast("אין ממתינים");
+  await fb("PATCH", `d/${ID}/cfg/rules`, o); toast("✅ עודכן");
+}
+
+/* ---------- שעות ---------- */
+function schedDays(){
+  const d = ((S.cfg||{}).sched||{}).days || {}, out = [];
+  for(let i=0;i<7;i++){ let w=d[i]; if(w && !Array.isArray(w)) w=Object.values(w); out.push(w||[]); }
+  return out;
+}
+let editDays = null;
+function renderSched(){
+  if(document.activeElement && document.activeElement.type==="time") return;
+  $("schedOn").checked = !!((S.cfg||{}).sched||{}).on;
+  editDays = schedDays();
+  $("days").innerHTML = editDays.map((ws,d)=>`
+    <div class="day"><div class="row"><b style="flex:1">יום ${DAYS[d]}</b>
+      <button class="ghost sm" onclick="addWin(${d})">+ חלון</button></div>
+      ${ws.length? ws.map((w,i)=>`<div class="win">
+        מ־<input type="time" value="${w.f}" onchange="editWin(${d},${i},'f',this.value)">
+        עד <input type="time" value="${w.t}" onchange="editWin(${d},${i},'t',this.value)">
+        <button class="r sm" onclick="delWin(${d},${i})">🗑️</button></div>`).join("")
+      : `<div class="muted" style="margin-top:6px">אין זמן מסך ביום הזה (רק "תמיד")</div>`}
+    </div>`).join("");
+}
+function saveSched(){
+  const days={}; editDays.forEach((w,i)=>days[i]=w);
+  patchCfg({sched:{on:$("schedOn").checked, days}}, "✅ השעות נשמרו");
+}
+function addWin(d){ editDays[d].push({f:"16:00",t:"18:00"}); saveSched(); }
+function delWin(d,i){ editDays[d].splice(i,1); saveSched(); }
+function editWin(d,i,k,v){ editDays[d][i][k]=v; saveSched(); }
+function copySunday(){ for(let d=1;d<7;d++) editDays[d]=JSON.parse(JSON.stringify(editDays[0])); saveSched(); }
+
+/* ---------- הגדרות ---------- */
+function renderSettings(){
+  const c=S.cfg||{};
+  if(document.activeElement!==$("msg")) $("msg").value = c.msg||"";
+  if(document.activeElement!==$("kidName2")) $("kidName2").value = c.name||"";
+  renderStatus();
+}
+const saveMsg = () => patchCfg({msg:$("msg").value.trim()}, "✅ נשמר");
+const saveName = () => patchCfg({name:$("kidName2").value.trim()}, "✅ נשמר");
+function changePin(){ const p=$("pin2").value.trim(); if(!/^\d{4,8}$/.test(p)) return toast("4–8 ספרות"); patchCfg({pin:p}, "✅ הקוד שונה"); $("pin2").value=""; }
+const openSettings = m => patchCfg({settingsUntil: Date.now()+m*60000}, `⚙️ ההגדרות בנגן פתוחות ל־${m} דקות`);
+
+function tab(t){
+  ["home","apps","time","set"].forEach(x=>$("t-"+x).classList.toggle("hide", x!==t));
+  document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));
+  scrollTo(0,0);
+}
+
+/* ---------- התחלה ---------- */
+if(!DB || DB.includes("REPLACE")) document.body.innerHTML = '<main><div class="card">חסרה כתובת מסד הנתונים (config.js)</div></main>';
+else if(ID) start(); else $("connect").classList.remove("hide");
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
