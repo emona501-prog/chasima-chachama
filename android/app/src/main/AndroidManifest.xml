@@ -92,9 +92,21 @@
 
         <activity
             android:name=".ChatActivity"
-            android:exported="false"
+            android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:taskAffinity="com.chaiapps.chasima.chat" />
+
+        <activity-alias
+            android:name=".ChatLauncher"
+            android:targetActivity=".ChatActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_chat"
+            android:label="הודעות לאבא">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <service
             android:name=".GuardService"
