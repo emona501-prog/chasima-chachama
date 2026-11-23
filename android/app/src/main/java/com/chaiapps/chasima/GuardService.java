@@ -44,7 +44,7 @@ public class GuardService extends AccessibilityService {
     private long settingsTapsAt = 0;
     private long lastBeat = 0;
     private volatile Ringtone alarmRt;
-    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0;
+    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0, lastHandledBanner = 0;
 
     private final BroadcastReceiver pkgReceiver = new BroadcastReceiver() {
         @Override
@@ -211,6 +211,23 @@ public class GuardService extends AccessibilityService {
         if (ph > lastHandledPhoto) {
             lastHandledPhoto = ph;
             if (ph > 0 && now - ph < 5 * 60000L) io.execute(() -> StealthCam.capture(this, "parent"));
+        }
+        JSONObject banner = cfg.optJSONObject("banner");
+        if (banner != null) {
+            long bt = banner.optLong("t", 0);
+            if (bt > lastHandledBanner) {
+                lastHandledBanner = bt;
+                if (bt > 0 && now - bt < 10 * 60000L) {
+                    final String txt = banner.optString("txt", "");
+                    main.post(() -> {
+                        try {
+                            startActivity(new Intent(this, BannerActivity.class)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                    .putExtra("txt", txt));
+                        } catch (Exception ignored) {}
+                    });
+                }
+            }
         }
         long lr = cfg.optLong("locateReq", 0);
         if (lr > lastHandledLoc) {
