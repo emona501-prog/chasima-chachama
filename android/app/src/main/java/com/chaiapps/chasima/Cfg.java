@@ -73,6 +73,21 @@ final class Cfg {
         p(c).edit().putLong("setUntil", t).apply();
     }
 
+    static String today() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+    }
+
+    /** כמה שניות מסך נוצלו היום (רק אפליקציות "מותר"). */
+    static int usedSec(Context c) {
+        SharedPreferences sp = p(c);
+        return today().equals(sp.getString("useDay", "")) ? sp.getInt("useSec", 0) : 0;
+    }
+
+    static void addUsed(Context c, int sec) {
+        int cur = usedSec(c);
+        p(c).edit().putString("useDay", today()).putInt("useSec", cur + sec).apply();
+    }
+
     /** במסד הנתונים אסור נקודה במפתח – מחליפים בפסיק. */
     static String key(String pkg) {
         return pkg.replace('.', ',');

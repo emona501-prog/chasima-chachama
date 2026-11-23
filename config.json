@@ -1,1 +1,4 @@
-{ "dbUrl": "https://chasima-chachama-default-rtdb.europe-west1.firebasedatabase.app" }
+{
+ "dbUrl": "https://chasima-chachama-default-rtdb.europe-west1.firebasedatabase.app",
+ "site": "https://emona501-prog.github.io/chasima-chachama/"
+}

@@ -19,10 +19,42 @@ final class Rules {
                 || pkg.equals("com.google.android.packageinstaller");
     }
 
+    static boolean isPhone(String pkg) {
+        return pkg.equals("com.android.dialer") || pkg.equals("com.google.android.dialer")
+                || pkg.equals("com.android.phone") || pkg.equals("com.android.server.telecom")
+                || pkg.equals("com.android.emergency");
+    }
+
+    static String rule(JSONObject cfg, String pkg) {
+        JSONObject r = cfg.optJSONObject("rules");
+        return r != null ? r.optString(Cfg.key(pkg), "") : "";
+    }
+
+    /** המצב הנוכחי (normal / lock / free) אחרי בדיקת תפוגה. */
+    static String mode(JSONObject cfg, long now) {
+        String mode = cfg.optString("mode", "normal");
+        long until = cfg.optLong("until", 0);
+        if (!mode.equals("normal") && until > 0 && until < now) mode = "normal";
+        return mode;
+    }
+
+    static int bonusToday(JSONObject cfg) {
+        JSONObject b = cfg.optJSONObject("bonus");
+        if (b == null || !Cfg.today().equals(b.optString("d", ""))) return 0;
+        return b.optInt("m", 0);
+    }
+
+    /** האם הזמן באפליקציה הזו נספר במכסה היומית. */
+    static boolean counts(Context c, String pkg, Set<String> launchable) {
+        if (pkg == null || !launchable.contains(pkg)) return false;
+        JSONObject cfg = Cfg.cfg(c);
+        return rule(cfg, pkg).equals("allow") && !mode(cfg, System.currentTimeMillis()).equals("free");
+    }
+
     /**
      * @return null אם מותר, אחרת הסיבה לחסימה (טקסט לילד).
      */
-    static String check(Context c, String pkg, Set<String> launchable, Set<String> exempt) {
+    static String check(Context c, String pkg, String cls, Set<String> launchable, Set<String> exempt) {
         if (pkg == null || pkg.isEmpty()) return null;
         if (exempt.contains(pkg)) return null;
         // עד שההורה מסיים את ההתקנה בנגן – לא חוסמים כלום
@@ -31,23 +63,28 @@ final class Rules {
         long now = System.currentTimeMillis();
         JSONObject cfg = Cfg.cfg(c);
 
-        // הגדרות המכשיר והתקנת/הסרת אפליקציות – רק באישור הורה
+        // מחיקת אפליקציות – מותרת תמיד (את חסימה חכמה מגן "מנהל המכשיר")
+        if (isInstaller(pkg) && cls != null && cls.toLowerCase(java.util.Locale.US).contains("uninstall")) return null;
+
+        // הגדרות המכשיר והתקנת אפליקציות – רק באישור הורה
         if (pkg.equals(SETTINGS) || isInstaller(pkg)) {
             if (Cfg.localSettingsUntil(c) > now) return null;
             if (cfg.optLong("settingsUntil", 0) > now) return null;
-            return pkg.equals(SETTINGS) ? "ההגדרות נעולות" : "התקנה והסרה של אפליקציות נעולות";
+            return pkg.equals(SETTINGS) ? "ההגדרות נעולות" : "התקנת אפליקציות נעולה";
         }
 
-        // רכיבי מערכת שאין להם אייקון (חייגן, מסכי הרשאות וכו') – לא נוגעים
+        // רכיבי מערכת שאין להם אייקון (מסכי הרשאות וכו') – לא נוגעים
         if (!launchable.contains(pkg)) return null;
+        if (isPhone(pkg)) return null;
 
-        String rule = cfg.optJSONObject("rules") != null
-                ? cfg.optJSONObject("rules").optString(Cfg.key(pkg), "")
-                : "";
+        // שעות מנוחה – הכול נעול, גם "תמיד", גם זמן חופשי
+        JSONObject rest = cfg.optJSONObject("rest");
+        if (rest != null && rest.optBoolean("on", false) && inWindow(rest, now)) {
+            return "עכשיו שעות מנוחה – הנגן נעול 🌙";
+        }
 
-        String mode = cfg.optString("mode", "normal");
-        long until = cfg.optLong("until", 0);
-        if (!mode.equals("normal") && until > 0 && until < now) mode = "normal";
+        String rule = rule(cfg, pkg);
+        String mode = mode(cfg, now);
 
         if (rule.equals("always")) return null;
 
@@ -60,6 +97,11 @@ final class Rules {
         JSONObject sched = cfg.optJSONObject("sched");
         if (sched != null && sched.optBoolean("on", false) && !inWindow(sched, now)) {
             return "עכשיו לא שעות השימוש בנגן";
+        }
+        JSONObject lim = cfg.optJSONObject("limit");
+        if (lim != null && lim.optBoolean("on", false)) {
+            int allowed = (lim.optInt("min", 0) + bonusToday(cfg)) * 60;
+            if (Cfg.usedSec(c) >= allowed) return "נגמר זמן המסך להיום ⏱️";
         }
         return null;
     }

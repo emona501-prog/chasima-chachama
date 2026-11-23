@@ -64,6 +64,17 @@ font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1p
 .toast.show{opacity:1}
 .hide{display:none!important}
 .alert{background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.5);padding:10px;border-radius:12px;margin-bottom:10px;font-weight:700}
+
+.chatbox{display:flex;flex-direction:column;gap:8px;padding:6px 0 90px}
+.msg{max-width:78%;padding:9px 12px;border-radius:16px;font-size:15px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
+.msg.k{align-self:flex-start;background:rgba(255,255,255,.14);border-bottom-right-radius:4px}
+.msg.p{align-self:flex-end;background:var(--blue);border-bottom-left-radius:4px}
+.msg small{display:block;font-size:11px;opacity:.65;margin-top:3px}
+.chatbar{position:fixed;left:0;right:0;bottom:64px;display:flex;gap:8px;padding:8px 12px;background:rgba(15,27,61,.97);border-top:1px solid var(--line);z-index:6}
+.chatbar input{flex:1}
+.bar{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--green);border-radius:99px}
+.bar i.over{background:var(--red)}
 footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
 </style>
 </head>
@@ -147,16 +158,53 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
       <p class="muted" style="margin-top:12px">🟥 חסום – לא נפתח אף פעם · 🟦 מותר – רק בשעות המסך · 🟩 תמיד – גם מחוץ לשעות ובנעילה</p>
     </div>
 
-    <!-- שעות -->
+    <!-- צ'אט -->
+    <div id="t-chat" class="hide">
+      <div class="chatbox" id="chatList"></div>
+      <div class="chatbar hide" id="chatBar">
+        <input id="chatIn" placeholder="כתוב הודעה…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="g" onclick="sendChat()">שלח</button>
+      </div>
+    </div>
+
+    <!-- זמן מסך -->
     <div id="t-time" class="hide">
       <div class="card">
         <div class="row">
-          <div style="flex:1"><b>הגבלת שעות פעילה</b><div class="muted">אפליקציות "מותר" נפתחות רק בשעות האלה</div></div>
-          <label class="sw"><input type="checkbox" id="schedOn" onchange="saveSched()"><i></i></label>
+          <div style="flex:1"><b>⏱️ מכסה יומית</b><div class="muted">כמה זמן מותר בסך הכול ביום (רק אפליקציות 🟦 "מותר")</div></div>
+          <label class="sw"><input type="checkbox" id="limOn" onchange="saveLimit()"><i></i></label>
+        </div>
+        <div class="win" style="margin-top:10px">
+          <select id="limMin" onchange="saveLimit()" style="width:auto"></select>
+        </div>
+        <div id="usage" class="muted" style="margin-top:10px"></div>
+        <div class="bar"><i id="usageBar" style="width:0"></i></div>
+        <p class="muted" style="margin:10px 0 6px">🎁 בונוס להיום (מעל המכסה):</p>
+        <div class="grid2" style="grid-template-columns:repeat(4,1fr)">
+          <button class="p sm" onclick="addBonus(15)">+15 ד׳</button>
+          <button class="p sm" onclick="addBonus(30)">+30 ד׳</button>
+          <button class="p sm" onclick="addBonus(60)">+שעה</button>
+          <button class="ghost sm" onclick="addBonus(0)">איפוס</button>
         </div>
       </div>
-      <div class="card" id="days"></div>
-      <button class="ghost" style="width:100%" onclick="copySunday()">📋 העתק את יום ראשון לכל הימים</button>
+
+      <div class="card">
+        <div class="row">
+          <div style="flex:1"><b>🟦 שעות שימוש</b><div class="muted">אפליקציות "מותר" נפתחות רק בשעות האלה</div></div>
+          <label class="sw"><input type="checkbox" id="schedOn" onchange="saveWins('sched')"><i></i></label>
+        </div>
+        <div id="days-sched"></div>
+        <button class="ghost sm" style="width:100%;margin-top:8px" onclick="copySunday('sched')">📋 העתק את יום ראשון לכל הימים</button>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div style="flex:1"><b>🌙 שעות מנוחה</b><div class="muted">בשעות האלה הכול נעול – גם "תמיד", גם בונוס וזמן חופשי</div></div>
+          <label class="sw"><input type="checkbox" id="restOn" onchange="saveWins('rest')"><i></i></label>
+        </div>
+        <div id="days-rest"></div>
+        <button class="ghost sm" style="width:100%;margin-top:8px" onclick="copySunday('rest')">📋 העתק את יום ראשון לכל הימים</button>
+      </div>
     </div>
 
     <!-- הגדרות -->
@@ -196,7 +244,8 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
   <nav>
     <a data-t="home" class="on" onclick="tab('home')"><i>🏠</i>בית<span id="navBadge" class="badge hide"></span></a>
     <a data-t="apps" onclick="tab('apps')"><i>📱</i>אפליקציות</a>
-    <a data-t="time" onclick="tab('time')"><i>⏰</i>שעות</a>
+    <a data-t="chat" onclick="tab('chat')"><i>💬</i>צ'אט<span id="chatBadge" class="badge hide"></span></a>
+    <a data-t="time" onclick="tab('time')"><i>⏰</i>זמן מסך</a>
     <a data-t="set" onclick="tab('set')"><i>⚙️</i>הגדרות</a>
   </nav>
 </section>
@@ -245,6 +294,7 @@ async function setFirstPin(){
 }
 function disconnect(){
   if(!confirm("לנתק את הטלפון הזה מהנגן? (ההגנה בנגן ממשיכה לעבוד)")) return;
+  if(window.ChasimaApp) try{ ChasimaApp.clearDevice(); }catch(e){}
   localStorage.removeItem("ch_id"); location.reload();
 }
 
@@ -257,8 +307,8 @@ function setAt(obj, path, val){
   if(val===null) delete o[parts.at(-1)]; else o[parts.at(-1)] = val;
   return obj;
 }
-function listen(node){
-  const es = new EventSource(`${DB}/d/${ID}/${node}.json`);
+function listen(node, q=""){
+  const es = new EventSource(`${DB}/d/${ID}/${node}.json${q}`);
   const h = (type) => (ev) => {
     const {path, data} = JSON.parse(ev.data);
     if(type==="put") S[node] = setAt(S[node], path, data) || {};
@@ -271,14 +321,19 @@ function listen(node){
 }
 function start(){
   $("connect").classList.add("hide"); $("app").classList.remove("hide");
-  ["cfg","st","req","apps","info"].forEach(listen);
+  ["cfg","st","req","apps","info"].forEach(n=>listen(n));
+  listen("chat", '?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=100');
+  if(window.ChasimaApp) try{ ChasimaApp.setDevice(ID); }catch(e){}
+  const h = location.hash.replace("#",""); if(h) tab(h);
   setInterval(()=>{ renderStatus(); renderMode(); }, 15000);
   $("devId").textContent = "מזהה נגן: " + ID;
 }
 
 /* ---------- תצוגה ---------- */
 function render(node){
-  if(node==="cfg"){ renderMode(); renderApps(); renderSched(); renderSettings(); renderReqs(); }
+  if(node==="cfg"){ renderMode(); renderApps(); renderTime(); renderSettings(); renderReqs(); }
+  if(node==="chat") renderChat();
+  if(node==="st") renderUsage();
   if(node==="st"||node==="info") renderStatus();
   if(node==="req") renderReqs();
   if(node==="apps"){ renderApps(); renderReqs(); }
@@ -302,6 +357,8 @@ function renderStatus(){
   const info = S.info||{};
   $("devInfo").innerHTML = `
     <div>📍 עכשיו פתוח: <b style="color:#fff">${esc(st.an||"מסך הבית")}</b></div>
+    <div>⏱️ זמן מסך היום: <b style="color:#fff">${fmtMin(usedToday())}</b>${limitTxt()}</div>
+    <div>📥 הנגן קיבל הגדרות: ${st.cfgAt? ago(st.cfgAt) : "—"}${st.err?` · <span style="color:#fca5a5">שגיאה: ${esc(st.err)}</span>`:""}</div>
     <div>🔋 סוללה: ${st.bat!=null? st.bat+"%":"—"} · עדכון אחרון: ${ago(st.seen)}</div>
     <div>📱 ${esc(info.model||"")} · אנדרואיד ${esc(info.android||"")} · גרסה ${esc(st.v||"")}</div>`;
 }
@@ -338,7 +395,7 @@ function renderReqs(){
   $("reqs").innerHTML = ks.length ? ks.map(k=>`
     <div class="app">${appIcon(k)}
       <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
-    </div>
+    </div>${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
     <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 10px">
       <button class="sm" onclick="answer('${k}','allow')">✔️ מותר</button>
       <button class="g sm" onclick="answer('${k}','always')">⭐ תמיד</button>
@@ -383,35 +440,90 @@ async function bulk(v){
   await fb("PATCH", `d/${ID}/cfg/rules`, o); toast("✅ עודכן");
 }
 
-/* ---------- שעות ---------- */
-function schedDays(){
-  const d = ((S.cfg||{}).sched||{}).days || {}, out = [];
+/* ---------- זמן מסך ---------- */
+function fmtMin(m){ m=Math.max(0,Math.round(m||0)); const h=Math.floor(m/60), mm=m%60; return h? `${h}:${String(mm).padStart(2,"0")} שע׳` : `${mm} דק׳`; }
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function usedToday(){ const st=S.st||{}; return st.day===todayStr() ? (st.used||0) : 0; }
+function bonusToday(){ const b=(S.cfg||{}).bonus||{}; return b.d===todayStr() ? (b.m||0) : 0; }
+function limitTxt(){ const l=(S.cfg||{}).limit||{}; if(!l.on) return ""; const tot=(l.min||0)+bonusToday(); return ` מתוך ${fmtMin(tot)}`; }
+function renderUsage(){
+  const l=(S.cfg||{}).limit||{}, used=usedToday(), tot=(l.min||0)+bonusToday();
+  $("usage").innerHTML = l.on ? `נוצל היום: <b style="color:#fff">${fmtMin(used)}</b> מתוך ${fmtMin(tot)}${bonusToday()?` (כולל בונוס ${bonusToday()} ד׳)`:""} · נשאר <b style="color:#fff">${fmtMin(tot-used)}</b>`
+    : `נוצל היום: <b style="color:#fff">${fmtMin(used)}</b> (בלי הגבלה)`;
+  const pct = l.on && tot ? Math.min(100, used/tot*100) : 0;
+  $("usageBar").style.width = pct+"%"; $("usageBar").className = pct>=100?"over":"";
+}
+function renderTime(){
+  const c=S.cfg||{}, l=c.limit||{};
+  if(!$("limMin").options.length){
+    const opts=[]; for(let m=15;m<=600;m+= m<60?15:30) opts.push(m);
+    $("limMin").innerHTML = opts.map(m=>`<option value="${m}">${fmtMin(m)} ביום</option>`).join("");
+  }
+  $("limOn").checked=!!l.on; $("limMin").value = l.min||120;
+  renderUsage();
+  renderWins("sched"); renderWins("rest");
+}
+const saveLimit = () => patchCfg({limit:{on:$("limOn").checked, min:+$("limMin").value}}, "✅ המכסה נשמרה");
+function addBonus(m){
+  const cur = m ? bonusToday()+m : 0;
+  patchCfg({bonus:{d:todayStr(), m:cur}}, m ? `🎁 נוספו ${m} דקות להיום` : "הבונוס אופס");
+}
+
+const EDIT = {sched:null, rest:null};
+const DEF = {sched:{f:"16:00",t:"18:00"}, rest:{f:"22:00",t:"07:00"}};
+function winDays(kind){
+  const d = ((S.cfg||{})[kind]||{}).days || {}, out=[];
   for(let i=0;i<7;i++){ let w=d[i]; if(w && !Array.isArray(w)) w=Object.values(w); out.push(w||[]); }
   return out;
 }
-let editDays = null;
-function renderSched(){
+function renderWins(kind){
   if(document.activeElement && document.activeElement.type==="time") return;
-  $("schedOn").checked = !!((S.cfg||{}).sched||{}).on;
-  editDays = schedDays();
-  $("days").innerHTML = editDays.map((ws,d)=>`
+  $(kind+"On").checked = !!((S.cfg||{})[kind]||{}).on;
+  EDIT[kind] = winDays(kind);
+  const empty = kind==="sched" ? 'אין זמן מסך ביום הזה (רק "תמיד")' : "אין שעות מנוחה ביום הזה";
+  $("days-"+kind).innerHTML = EDIT[kind].map((ws,d)=>`
     <div class="day"><div class="row"><b style="flex:1">יום ${DAYS[d]}</b>
-      <button class="ghost sm" onclick="addWin(${d})">+ חלון</button></div>
+      <button class="ghost sm" onclick="addWin('${kind}',${d})">+ חלון</button></div>
       ${ws.length? ws.map((w,i)=>`<div class="win">
-        מ־<input type="time" value="${w.f}" onchange="editWin(${d},${i},'f',this.value)">
-        עד <input type="time" value="${w.t}" onchange="editWin(${d},${i},'t',this.value)">
-        <button class="r sm" onclick="delWin(${d},${i})">🗑️</button></div>`).join("")
-      : `<div class="muted" style="margin-top:6px">אין זמן מסך ביום הזה (רק "תמיד")</div>`}
+        מ־<input type="time" value="${w.f}" onchange="editWin('${kind}',${d},${i},'f',this.value)">
+        עד <input type="time" value="${w.t}" onchange="editWin('${kind}',${d},${i},'t',this.value)">
+        <button class="r sm" onclick="delWin('${kind}',${d},${i})">🗑️</button></div>`).join("")
+      : `<div class="muted" style="margin-top:6px">${empty}</div>`}
     </div>`).join("");
 }
-function saveSched(){
-  const days={}; editDays.forEach((w,i)=>days[i]=w);
-  patchCfg({sched:{on:$("schedOn").checked, days}}, "✅ השעות נשמרו");
+function saveWins(kind){
+  const days={}; EDIT[kind].forEach((w,i)=>days[i]=w);
+  patchCfg({[kind]:{on:$(kind+"On").checked, days}}, "✅ נשמר");
 }
-function addWin(d){ editDays[d].push({f:"16:00",t:"18:00"}); saveSched(); }
-function delWin(d,i){ editDays[d].splice(i,1); saveSched(); }
-function editWin(d,i,k,v){ editDays[d][i][k]=v; saveSched(); }
-function copySunday(){ for(let d=1;d<7;d++) editDays[d]=JSON.parse(JSON.stringify(editDays[0])); saveSched(); }
+function addWin(kind,d){ EDIT[kind][d].push({...DEF[kind]}); saveWins(kind); }
+function delWin(kind,d,i){ EDIT[kind][d].splice(i,1); saveWins(kind); }
+function editWin(kind,d,i,k,v){ EDIT[kind][d][i][k]=v; saveWins(kind); }
+function copySunday(kind){ for(let d=1;d<7;d++) EDIT[kind][d]=JSON.parse(JSON.stringify(EDIT[kind][0])); saveWins(kind); }
+
+/* ---------- צ'אט ---------- */
+function chatKeys(){ return Object.keys(S.chat||{}).sort(); }
+function renderChat(){
+  const c=S.chat||{}, ks=chatKeys(), name=(S.cfg||{}).name||"הילד";
+  $("chatList").innerHTML = ks.length ? ks.map(k=>{
+    const m=c[k]||{}, t=m.t? new Date(m.t).toLocaleString("he-IL",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"numeric"}) : "";
+    return `<div class="msg ${m.from==="p"?"p":"k"}">${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}</small></div>`;
+  }).join("") : `<p class="muted" style="text-align:center;margin-top:30px">אין עדיין הודעות 💬<br>אפשר לכתוב ל${esc(name)} כאן</p>`;
+  const onChat = !$("t-chat").classList.contains("hide");
+  if(onChat){ markRead(); scrollTo(0, document.body.scrollHeight); }
+  updateChatBadge();
+}
+function markRead(){ const ks=chatKeys(); if(ks.length) localStorage.setItem("ch_read", ks.at(-1)); updateChatBadge(); }
+function updateChatBadge(){
+  const r=localStorage.getItem("ch_read")||"", c=S.chat||{};
+  const n=chatKeys().filter(k=>k>r && (c[k]||{}).from==="k").length;
+  $("chatBadge").textContent=n; $("chatBadge").classList.toggle("hide", !n);
+}
+async function sendChat(){
+  const t=$("chatIn").value.trim(); if(!t) return;
+  $("chatIn").value="";
+  try{ await fb("POST", `d/${ID}/chat`, {from:"p", txt:t, t:{".sv":"timestamp"}}); }
+  catch(e){ $("chatIn").value=t; toast("❌ "+e.message); }
+}
 
 /* ---------- הגדרות ---------- */
 function renderSettings(){
@@ -426,7 +538,10 @@ function changePin(){ const p=$("pin2").value.trim(); if(!/^\d{4,8}$/.test(p)) r
 const openSettings = m => patchCfg({settingsUntil: Date.now()+m*60000}, `⚙️ ההגדרות בנגן פתוחות ל־${m} דקות`);
 
 function tab(t){
-  ["home","apps","time","set"].forEach(x=>$("t-"+x).classList.toggle("hide", x!==t));
+  if(!$("t-"+t)) t="home";
+  ["home","apps","chat","time","set"].forEach(x=>$("t-"+x).classList.toggle("hide", x!==t));
+  $("chatBar").classList.toggle("hide", t!=="chat");
+  if(t==="chat"){ markRead(); setTimeout(()=>scrollTo(0, document.body.scrollHeight),50); return; }
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));
   scrollTo(0,0);
 }

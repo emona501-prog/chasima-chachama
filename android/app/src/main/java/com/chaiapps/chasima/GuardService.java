@@ -30,6 +30,9 @@ public class GuardService extends AccessibilityService {
     private volatile Set<String> launchable = new HashSet<>();
     private volatile Set<String> exempt = new HashSet<>();
     private volatile String current = "";
+    private volatile String currentCls = "";
+    private long lastAcct = 0;
+    private String acctPkg = "";
     private long lastBlockAt = 0;
     private String lastBlockPkg = "";
     private long lastBeat = 0;
@@ -48,7 +51,10 @@ public class GuardService extends AccessibilityService {
         @Override
         public void run() {
             if (stop.get()) return;
+            account();
             check(current);
+            // גיבוי: מושכים את ההגדרות מההורה כל 15 שניות, גם אם ההאזנה החיה נקטעה
+            io.execute(() -> pullCfg("d/" + Cfg.deviceId(GuardService.this) + "/cfg"));
             if (System.currentTimeMillis() - lastBeat > 55000) beat();
             main.postDelayed(this, 15000);
         }
@@ -73,7 +79,9 @@ public class GuardService extends AccessibilityService {
         }
 
         io.execute(this::syncLoop);
+        io.execute(this::chatLoop);
         io.execute(() -> Apps.report(this));
+        io.execute(() -> pullCfg("d/" + Cfg.deviceId(this) + "/cfg"));
         main.postDelayed(tick, 3000);
         beat();
     }
@@ -93,7 +101,9 @@ public class GuardService extends AccessibilityService {
             if (!isHome(pkg)) return;
         }
         boolean changed = !pkg.equals(current);
+        account();
         current = pkg;
+        currentCls = e.getClassName() == null ? "" : e.getClassName().toString();
         check(pkg);
         if (changed && System.currentTimeMillis() - lastBeat > 5000) beat();
     }
@@ -112,8 +122,21 @@ public class GuardService extends AccessibilityService {
         main.post(() -> check(current));
     }
 
+    /** ספירת זמן מסך: כמה שניות האפליקציה הנוכחית הייתה פתוחה (רק כשהמסך דולק). */
+    private void account() {
+        long now = System.currentTimeMillis();
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+        boolean on = pm != null && pm.isInteractive();
+        if (lastAcct > 0 && on && Rules.counts(this, acctPkg, launchable)) {
+            long sec = (now - lastAcct) / 1000;
+            if (sec > 0 && sec <= 120) Cfg.addUsed(this, (int) sec);
+        }
+        lastAcct = now;
+        acctPkg = on ? current : "";
+    }
+
     private void check(String pkg) {
-        String reason = Rules.check(this, pkg, launchable, exempt);
+        String reason = Rules.check(this, pkg, pkg.equals(current) ? currentCls : "", launchable, exempt);
         if (reason == null) return;
         long now = System.currentTimeMillis();
         if (pkg.equals(lastBlockPkg) && now - lastBlockAt < 1200) return;
@@ -148,12 +171,58 @@ public class GuardService extends AccessibilityService {
         }
     }
 
+    /** האזנה להודעות מאבא – מציג התראה בנגן. */
+    private void chatLoop() {
+        String url = Fb.url("d/" + Cfg.deviceId(this) + "/chat") + Fb.lastQ(1);
+        long wait = 3000;
+        while (!stop.get()) {
+            try {
+                Fb.streamUrl(url, (event, data) -> {
+                    if (!event.equals("put") && !event.equals("patch")) return;
+                    try {
+                        JSONObject ev = new JSONObject(data);
+                        String path = ev.optString("path", "/");
+                        Object d = ev.opt("data");
+                        if (path.equals("/") && d instanceof JSONObject) {
+                            JSONObject all = (JSONObject) d;
+                            java.util.Iterator<String> it = all.keys();
+                            while (it.hasNext()) {
+                                String k = it.next();
+                                gotChat(k, all.optJSONObject(k));
+                            }
+                        } else if (d instanceof JSONObject) {
+                            gotChat(path.replace("/", ""), (JSONObject) d);
+                        }
+                    } catch (Exception ignored) {}
+                }, stop);
+                wait = 3000;
+            } catch (Exception ex) {
+                try { Thread.sleep(wait); } catch (InterruptedException ie) { return; }
+                wait = Math.min(wait * 2, 60000);
+            }
+        }
+    }
+
+    private void gotChat(String key, JSONObject m) {
+        if (m == null || key.isEmpty()) return;
+        String last = Cfg.p(this).getString("chatSeen", "");
+        if (key.compareTo(last) <= 0) return;
+        Cfg.p(this).edit().putString("chatSeen", key).apply();
+        if (last.isEmpty()) return; // הפעם הראשונה – רק מסמנים
+        if (!"p".equals(m.optString("from"))) return;
+        Notify.chat(this, m.optString("txt", ""));
+    }
+
     private void pullCfg(String path) {
         try {
             String json = Fb.get(path);
+            String old = Cfg.p(this).getString("cfg", "");
             Cfg.saveCfg(this, json);
-            recheck();
-        } catch (Exception ignored) {}
+            Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).apply();
+            if (!old.equals(json)) recheck();
+        } catch (Exception ex) {
+            Cfg.p(this).edit().putString("cfgErr", String.valueOf(ex.getMessage())).apply();
+        }
     }
 
     /** דיווח להורה: הנגן מחובר, מה פתוח עכשיו, סוללה. */
@@ -172,6 +241,12 @@ public class GuardService extends AccessibilityService {
                 BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
                 st.put("bat", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY));
                 st.put("v", BuildConfig.VERSION_NAME);
+                st.put("used", Cfg.usedSec(this) / 60);
+                st.put("cfgAt", Cfg.p(this).getLong("cfgAt", 0));
+                JSONObject rl = Cfg.cfg(this).optJSONObject("rules");
+                st.put("rules", rl == null ? 0 : rl.length());
+                st.put("err", Cfg.p(this).getString("cfgErr", ""));
+                st.put("day", Cfg.today());
                 st.put("alert", "");
                 Fb.patch("d/" + Cfg.deviceId(this) + "/st", st.toString());
             } catch (Exception ignored) {}

@@ -117,6 +117,10 @@ public class MainActivity extends Activity {
 
     // ---------- התקנה ----------
     private void buildSetup() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
+        }
         LinearLayout l = Ui.screen(this);
         Ui.text(this, l, "🛡️ חסימה חכמה", 28, Color.WHITE, true);
         Ui.text(this, l, "הגדרה ראשונה של הנגן – 4 שלבים", 16, 0xCCFFFFFF, false);
@@ -194,6 +198,10 @@ public class MainActivity extends Activity {
         Ui.text(this, l, "הנגן מוגן", 26, Color.WHITE, true);
         Ui.text(this, l, "ע\"י חסימה חכמה", 16, 0xCCFFFFFF, false);
         if (!guardOn()) Ui.text(this, l, "⚠️ השומר כבוי!", 18, 0xFFFCA5A5, true);
+        int used = Cfg.usedSec(this) / 60;
+        if (used > 0) Ui.text(this, l, "⏱️ זמן מסך היום: " + (used / 60) + ":" + String.format(java.util.Locale.US, "%02d", used % 60), 15, 0xCCFFFFFF, false);
+        Ui.button(this, l, "💬 הודעות עם אבא", Ui.GREEN,
+                v -> startActivity(new Intent(this, ChatActivity.class)));
 
         LinearLayout c = Ui.card(this, l);
         Ui.text(this, c, "כניסת הורה", 16, Color.WHITE, true);

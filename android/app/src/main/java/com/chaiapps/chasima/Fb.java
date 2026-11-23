@@ -41,8 +41,35 @@ final class Fb {
         call("DELETE", path, null);
     }
 
+    /** הוספת פריט חדש לרשימה (מפתח אוטומטי לפי זמן). */
+    static String post(String path, String json) throws IOException {
+        String r = call("POST", path, json);
+        try {
+            return new org.json.JSONObject(r).optString("name", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** N הפריטים האחרונים ברשימה. */
+    static String last(String path, int n) throws IOException {
+        return callUrl("GET", url(path) + lastQ(n), null);
+    }
+
+    static String lastQ(int n) {
+        return "?orderBy=%22%24key%22&limitToLast=" + n;
+    }
+
+    static String url(String path) {
+        return base() + "/" + path + ".json";
+    }
+
     private static String call(String method, String path, String body) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(base() + "/" + path + ".json").openConnection();
+        return callUrl(method, url(path), body);
+    }
+
+    private static String callUrl(String method, String fullUrl, String body) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(fullUrl).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(20000);
         if (method.equals("PATCH")) {
@@ -77,7 +104,11 @@ final class Fb {
 
     /** האזנה חיה לשינויים בנתיב. חוזר רק כשהחיבור נקטע או כשביקשו לעצור. */
     static void stream(String path, Listener l, AtomicBoolean stop) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL(base() + "/" + path + ".json").openConnection();
+        streamUrl(url(path), l, stop);
+    }
+
+    static void streamUrl(String fullUrl, Listener l, AtomicBoolean stop) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(fullUrl).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(75000); // השרת שולח keep-alive כל 30 שניות
         c.setInstanceFollowRedirects(true);
