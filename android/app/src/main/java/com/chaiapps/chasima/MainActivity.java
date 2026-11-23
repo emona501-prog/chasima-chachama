@@ -226,6 +226,9 @@ public class MainActivity extends Activity {
         LinearLayout c = Ui.card(this, l);
         Ui.text(this, c, (guardOn() ? "✅" : "❌") + " השומר  ·  " + (adminOn() ? "✅" : "❌") + " הגנה ממחיקה", 16, Color.WHITE, false);
         Ui.text(this, c, "גרסה " + BuildConfig.VERSION_NAME, 13, 0x99FFFFFF, false);
+        final TextView upd = Ui.text(this, c, "", 14, 0xFFBBF7D0, false);
+        Ui.button(this, l, "🔄 עדכן את האפליקציה לגרסה האחרונה", Ui.BLUE,
+                v -> Updater.run(this, upd::setText));
 
         Ui.button(this, l, "⚙️ פתיחת הגדרות הנגן ל־10 דקות", Ui.BLUE, v -> {
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 10 * 60000L);
