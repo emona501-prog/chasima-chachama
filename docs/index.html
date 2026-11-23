@@ -36,7 +36,7 @@ input,textarea,select{font:inherit;width:100%;padding:12px;border-radius:12px;bo
 input[type=time]{width:auto;padding:8px;color-scheme:dark}
 .big{font-size:30px;text-align:center;letter-spacing:6px}
 .mode{display:flex;gap:10px;align-items:center;padding:12px;border-radius:14px;margin-bottom:10px;font-weight:700}
-.mode.normal{background:rgba(59,130,246,.2)}.mode.lock{background:rgba(239,68,68,.25)}.mode.free{background:rgba(34,197,94,.22)}
+.mode.normal{background:rgba(59,130,246,.2)}.mode.lock{background:rgba(239,68,68,.25)}.mode.free{background:rgba(34,197,94,.22)}.mode.off{background:rgba(245,158,11,.25)}
 .app{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .app:last-child{border-bottom:0}
 .app img,.ph{width:40px;height:40px;border-radius:10px;flex:none;background:#ffffff22}
@@ -65,12 +65,13 @@ font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1p
 .hide{display:none!important}
 .alert{background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.5);padding:10px;border-radius:12px;margin-bottom:10px;font-weight:700}
 
-.chatbox{display:flex;flex-direction:column;gap:8px;padding:6px 0 90px}
+.chatbox{display:flex;flex-direction:column;gap:8px;padding:6px 0 150px}
 .msg{max-width:78%;padding:9px 12px;border-radius:16px;font-size:15px;line-height:1.4;white-space:pre-wrap;word-break:break-word}
 .msg.k{align-self:flex-start;background:rgba(255,255,255,.14);border-bottom-right-radius:4px}
 .msg.p{align-self:flex-end;background:var(--blue);border-bottom-left-radius:4px}
 .msg small{display:block;font-size:11px;opacity:.65;margin-top:3px}
-.chatbar{position:fixed;left:0;right:0;bottom:64px;display:flex;gap:8px;padding:8px 12px;background:rgba(15,27,61,.97);border-top:1px solid var(--line);z-index:6}
+.chatbar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px 12px;background:rgba(15,27,61,.98);border-top:1px solid var(--line);z-index:8}
+.chatbar input{min-width:0}
 .chatbar input{flex:1}
 .bar{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--green);border-radius:99px}
@@ -115,6 +116,10 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
     <!-- בית -->
     <div id="t-home">
       <div id="alerts"></div>
+      <div class="card" id="pauseCard">
+        <button id="pauseBtn" style="width:100%;font-size:18px;padding:14px" onclick="togglePause()">⏸️ השהה את כל ההגנה</button>
+        <p class="muted" style="text-align:center;margin-top:8px">כשההגנה מושהית, הכל פתוח לילד עד שתפעיל שוב</p>
+      </div>
       <div class="card">
         <div id="modeBox" class="mode normal">…</div>
         <div class="grid2">
@@ -321,7 +326,12 @@ async function fb(method, path, body){
   if(!r.ok) throw new Error("שגיאת חיבור "+r.status);
   return r.json();
 }
-const patchCfg = async (o, msg) => { try{ await fb("PATCH", `d/${ID}/cfg`, o); if(msg) toast(msg); } catch(e){ toast("❌ "+e.message); } };
+const patchCfg = async (o, msg) => {
+  S.cfg = Object.assign({}, S.cfg, o);            // עדכון מיידי בתצוגה (לא מחכים לשרת)
+  render("cfg");
+  try{ await fb("PATCH", `d/${ID}/cfg`, o); if(msg) toast(msg); }
+  catch(e){ toast("❌ "+e.message); }
+};
 
 /* ---------- חיבור ---------- */
 async function doConnect(){
@@ -377,8 +387,20 @@ function start(){
   listen("loc"); listen("photo"); listen("sitereq");
   if(window.ChasimaApp) try{ ChasimaApp.setDevice(ID); }catch(e){}
   const h = location.hash.replace("#",""); if(h) tab(h);
-  setInterval(()=>{ renderStatus(); renderMode(); }, 15000);
+  setInterval(()=>{ renderStatus(); renderMode(); renderUsage(); renderSites(); }, 10000);
+  setInterval(pollAll, 6000);   // גיבוי: מושכים נתונים כל 6 שניות גם אם ההאזנה החיה נתקעת
   $("devId").textContent = "מזהה נגן: " + ID;
+}
+let polling=false;
+async function pollAll(){
+  if(polling || document.hidden) return; polling=true;
+  try{
+    const d = await fb("GET", `d/${ID}`) || {};
+    ["cfg","st","req","apps","info","chat","loc","photo","sitereq"].forEach(n=>{
+      if(d[n]!==undefined){ S[n]=d[n]; render(n); }
+    });
+  }catch(e){}
+  polling=false;
 }
 
 /* ---------- תצוגה ---------- */
@@ -423,12 +445,22 @@ function curMode(){
   return m;
 }
 function renderMode(){
-  const c=S.cfg||{}, m=curMode(), box=$("modeBox");
+  const c=S.cfg||{}, box=$("modeBox");
+  const off = c.mode==="off";
+  const btn=$("pauseBtn");
+  if(btn){ btn.textContent = off ? "▶️ הפעל את ההגנה מחדש" : "⏸️ השהה את כל ההגנה"; btn.className = off ? "g" : "r"; }
+  if(off){ box.className="mode off"; box.innerHTML = `⏸️ ההגנה מושהית<div class="muted" style="font-weight:400">הכל פתוח לילד</div>`; return; }
+  const m=curMode();
   const left = c.until>Date.now() ? ` – עד ${new Date(c.until).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})}` : "";
   box.className = "mode "+m;
   box.innerHTML = m==="lock" ? `🔒 הנגן נעול${left}<div class="muted" style="font-weight:400">רק אפליקציות "תמיד" פתוחות</div>`
     : m==="free" ? `🎉 זמן חופשי${left}`
     : `✅ מצב רגיל${(c.sched||{}).on ? " · לפי שעות" : ""}`;
+}
+function togglePause(){
+  const off = (S.cfg||{}).mode==="off";
+  if(off) patchCfg({mode:"normal", until:0}, "▶️ ההגנה חזרה לפעול");
+  else patchCfg({mode:"off", until:0}, "⏸️ ההגנה הושהתה – הכל פתוח");
 }
 async function setMode(mode, min){
   await patchCfg({mode, until: min ? Date.now()+min*60000 : 0},

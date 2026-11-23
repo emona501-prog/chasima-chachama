@@ -87,6 +87,9 @@ final class Rules {
         if (!launchable.contains(pkg)) return null;
         if (isPhone(pkg)) return null;
 
+        // השהיית כל ההגנה ע"י ההורה – הכל פתוח (חוץ מהגדרות/התקנה שכבר טופלו למעלה)
+        if (cfg.optString("mode", "normal").equals("off")) return null;
+
         // שעות מנוחה – הכול נעול, גם "תמיד", גם זמן חופשי
         JSONObject rest = cfg.optJSONObject("rest");
         if (rest != null && rest.optBoolean("on", false) && inWindow(rest, now)) {

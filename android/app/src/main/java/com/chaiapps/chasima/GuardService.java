@@ -60,10 +60,11 @@ public class GuardService extends AccessibilityService {
             if (stop.get()) return;
             account();
             check(current);
-            // גיבוי: מושכים את ההגדרות מההורה כל 15 שניות, גם אם ההאזנה החיה נקטעה
+            // גיבוי: מושכים את ההגדרות וההודעות מההורה כל 6 שניות, גם אם ההאזנה החיה נקטעה
             io.execute(() -> pullCfg("d/" + Cfg.deviceId(GuardService.this) + "/cfg"));
-            if (System.currentTimeMillis() - lastBeat > 55000) beat();
-            main.postDelayed(this, 15000);
+            io.execute(GuardService.this::pollChat);
+            if (System.currentTimeMillis() - lastBeat > 45000) beat();
+            main.postDelayed(this, 6000);
         }
     };
 
@@ -278,6 +279,20 @@ public class GuardService extends AccessibilityService {
                 wait = Math.min(wait * 2, 60000);
             }
         }
+    }
+
+    /** גיבוי להתראות צ'אט: מושך את ההודעה האחרונה ומתריע אם היא מאבא. */
+    private void pollChat() {
+        try {
+            String json = Fb.last("d/" + Cfg.deviceId(this) + "/chat", 1);
+            if (json == null || json.equals("null")) return;
+            JSONObject all = new JSONObject(json);
+            java.util.Iterator<String> it = all.keys();
+            while (it.hasNext()) {
+                String k = it.next();
+                gotChat(k, all.optJSONObject(k));
+            }
+        } catch (Exception ignored) {}
     }
 
     private void gotChat(String key, JSONObject m) {
