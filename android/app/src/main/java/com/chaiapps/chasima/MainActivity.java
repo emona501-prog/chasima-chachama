@@ -2,6 +2,8 @@ package com.chaiapps.chasima;
 
 import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -46,6 +48,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // אם המשתמש ביקש להסתיר – מוודאים שזה מוחל (עדכון עלול לאפס)
+        if (Cfg.p(this).getBoolean("iconHidden", false) && !iconHidden()) setIconHidden(true);
         registerPair();
     }
 
@@ -76,6 +80,45 @@ public class MainActivity extends Activity {
                 Fb.patch("d/" + id + "/info", info.toString());
             } catch (Exception ignored) {}
         }).start();
+    }
+
+    private boolean iconHidden() {
+        try {
+            return getPackageManager().getComponentEnabledSetting(launcherAlias())
+                    == PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private ComponentName launcherAlias() {
+        return new ComponentName(this, getPackageName() + ".Launcher");
+    }
+
+    private void setIconHidden(boolean hide) {
+        try {
+            getPackageManager().setComponentEnabledSetting(launcherAlias(),
+                    hide ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                         : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
+        } catch (Exception ignored) {}
+    }
+
+    private android.content.ComponentName launcherAlias() {
+        return new android.content.ComponentName(this, getPackageName() + ".Launcher");
+    }
+
+    private boolean iconHidden() {
+        int st = getPackageManager().getComponentEnabledSetting(launcherAlias());
+        return st == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+    }
+
+    private void setIconHidden(boolean hide) {
+        Cfg.p(this).edit().putBoolean("iconHidden", hide).apply();
+        getPackageManager().setComponentEnabledSetting(launcherAlias(),
+                hide ? android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                     : android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                android.content.pm.PackageManager.DONT_KILL_APP);
     }
 
     private boolean guardOn() {
@@ -230,6 +273,23 @@ public class MainActivity extends Activity {
         Ui.button(this, l, "🔄 עדכן את האפליקציה לגרסה האחרונה", Ui.BLUE,
                 v -> Updater.run(this, upd::setText));
 
+        boolean hidden = iconHidden();
+        LinearLayout ch = Ui.card(this, l);
+        Ui.text(this, ch, hidden ? "🙈 האפליקציה מוסתרת" : "👁️ האפליקציה גלויה", 16, Color.WHITE, true);
+        Ui.text(this, ch, "כשהאפליקציה מוסתרת אין לה אייקון והילד לא יכול למצוא או למחוק אותה. כדי לפתוח אותה: 10 לחיצות על אייקון ההגדרות, ואז קוד ההורה.", 13, 0xCCFFFFFF, false);
+        if (hidden) {
+            Ui.button(this, ch, "👁️ הצג אפליקציה (החזר אייקון)", 0x55FFFFFF, v -> {
+                setIconHidden(false);
+                build();
+            });
+        } else {
+            Ui.button(this, ch, "🙈 הסתר את האפליקציה (ללא אייקון)", Ui.PURPLE, v -> {
+                setIconHidden(true);
+                parentOpen = false;
+                build();
+            });
+        }
+
         Ui.button(this, l, "⚙️ פתיחת הגדרות הנגן ל־10 דקות", Ui.BLUE, v -> {
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 10 * 60000L);
             open(new Intent(Settings.ACTION_SETTINGS));
@@ -239,6 +299,23 @@ public class MainActivity extends Activity {
         Ui.text(this, cc, "מקלידים את הקוד באפליקציית ההורה. אפשר לחבר כמה טלפונים.", 13, 0xCCFFFFFF, false);
         TextView pc = Ui.text(this, cc, Cfg.pairCode(this), 36, 0xFFFDE68A, true);
         pc.setLetterSpacing(0.15f);
+        boolean hidden = iconHidden();
+        Ui.button(this, l, hidden ? "👁️ הצג את אייקון האפליקציה" : "🙈 הסתר את האפליקציה (ללא אייקון)",
+                0x55FFFFFF, v -> {
+            setIconHidden(!hidden);
+            if (!hidden) {
+                LinearLayout d = Ui.screen(this);
+                Ui.text(this, d, "🙈", 64, Color.WHITE, false).setPadding(0, Ui.dp(this, 50), 0, 0);
+                Ui.text(this, d, "האייקון הוסתר", 24, Color.WHITE, true);
+                Ui.text(this, d, "כדי לפתוח שוב את חסימה חכמה:\nמנסים לפתוח את \"הגדרות\" בנגן, ובמסך שנפתח לוחצים 10 פעמים על המנעול 🔒", 16, 0xCCFFFFFF, false);
+                Ui.button(this, d, "הבנתי, סגור", Ui.GREEN, x -> {
+                    parentOpen = false;
+                    moveTaskToBack(true);
+                });
+            } else {
+                build();
+            }
+        });
         Ui.button(this, l, "🔄 הגדרה מחדש (הרשאות)", 0x55FFFFFF, v -> {
             Cfg.setSetupDone(this, false);
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 30 * 60000L);

@@ -40,6 +40,8 @@ public class GuardService extends AccessibilityService {
     private String acctPkg = "";
     private long lastBlockAt = 0;
     private String lastBlockPkg = "";
+    private int settingsTaps = 0;
+    private long settingsTapsAt = 0;
     private long lastBeat = 0;
     private volatile Ringtone alarmRt;
     private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0;
@@ -112,6 +114,23 @@ public class GuardService extends AccessibilityService {
         account();
         current = pkg;
         currentCls = e.getClassName() == null ? "" : e.getClassName().toString();
+        // גילוי האפליקציה המוסתרת: 10 לחיצות רצופות על ההגדרות
+        if (changed && pkg.equals(Rules.SETTINGS)) {
+            long now = System.currentTimeMillis();
+            if (now - settingsTapsAt > 20000) settingsTaps = 0;
+            settingsTapsAt = now;
+            if (++settingsTaps >= 10) {
+                settingsTaps = 0;
+                performGlobalAction(GLOBAL_ACTION_HOME);
+                main.postDelayed(() -> {
+                    try {
+                        startActivity(new Intent(this, MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+                    } catch (Exception ignored) {}
+                }, 150);
+                return;
+            }
+        }
         check(pkg);
         if (changed && System.currentTimeMillis() - lastBeat > 5000) beat();
     }

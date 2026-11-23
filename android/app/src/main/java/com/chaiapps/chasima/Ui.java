@@ -18,7 +18,7 @@ final class Ui {
     private Ui() {}
 
     static final int BG1 = 0xFF0F1B3D, BG2 = 0xFF1E3A8A, CARD = 0x22FFFFFF;
-    static final int GREEN = 0xFF22C55E, RED = 0xFFEF4444, GOLD = 0xFFF59E0B, BLUE = 0xFF3B82F6;
+    static final int GREEN = 0xFF22C55E, RED = 0xFFEF4444, GOLD = 0xFFF59E0B, BLUE = 0xFF3B82F6, PURPLE = 0xFFA855F7;
 
     static int dp(Activity a, float v) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, a.getResources().getDisplayMetrics());

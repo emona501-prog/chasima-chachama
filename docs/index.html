@@ -391,14 +391,18 @@ function start(){
   setInterval(pollAll, 6000);   // גיבוי: מושכים נתונים כל 6 שניות גם אם ההאזנה החיה נתקעת
   $("devId").textContent = "מזהה נגן: " + ID;
 }
-let polling=false;
+let polling=false, pollN=0;
 async function pollAll(){
   if(polling || document.hidden) return; polling=true;
   try{
-    const d = await fb("GET", `d/${ID}`) || {};
-    ["cfg","st","req","apps","info","chat","loc","photo","sitereq"].forEach(n=>{
-      if(d[n]!==undefined){ S[n]=d[n]; render(n); }
-    });
+    // כל 6 שניות: רק נתונים קטנים. אפליקציות ותמונות (כבדים) – רק פעם ב-5 סבבים
+    const nodes = (++pollN % 5 === 0)
+      ? ["cfg","st","req","sitereq","loc","chat","apps","photo"]
+      : ["cfg","st","req","sitereq","loc","chat"];
+    for(const n of nodes){
+      const v = await fb("GET", `d/${ID}/${n}`);
+      S[n] = v || {}; render(n);
+    }
   }catch(e){}
   polling=false;
 }
@@ -608,8 +612,17 @@ function updateChatBadge(){
 async function sendChat(){
   const t=$("chatIn").value.trim(); if(!t) return;
   $("chatIn").value="";
-  try{ await fb("POST", `d/${ID}/chat`, {from:"p", txt:t, t:{".sv":"timestamp"}}); }
-  catch(e){ $("chatIn").value=t; toast("❌ "+e.message); }
+  const lk = "zzlocal" + Date.now();                 // מופיע מיד למטה עד שהשרת מאשר
+  S.chat = Object.assign({}, S.chat, {[lk]:{from:"p", txt:t, t:Date.now()}});
+  renderChat();
+  try{
+    await fb("POST", `d/${ID}/chat`, {from:"p", txt:t, t:{".sv":"timestamp"}});
+    toast("✅ נשלח");
+  }catch(e){
+    delete S.chat[lk]; renderChat();
+    $("chatIn").value=t;
+    toast("❌ לא נשלח: "+e.message);
+  }
 }
 
 /* ---------- איתור ואבטחה ---------- */

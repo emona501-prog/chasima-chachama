@@ -16,6 +16,8 @@ import org.json.JSONObject;
 public class BlockActivity extends Activity {
 
     private String pkg = "", name = "";
+    private int tapCount = 0;
+    private long lastTap = 0;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -74,7 +76,18 @@ public class BlockActivity extends Activity {
         if (name == null) name = pkg;
 
         LinearLayout l = Ui.screen(this);
-        Ui.text(this, l, "🔒", 72, Color.WHITE, false).setPadding(0, Ui.dp(this, 30), 0, 0);
+        android.widget.TextView lock = Ui.text(this, l, "🔒", 72, Color.WHITE, false);
+        lock.setPadding(0, Ui.dp(this, 30), 0, 0);
+        lock.setOnClickListener(v -> {
+            long now = System.currentTimeMillis();
+            if (now - lastTap > 3000) tapCount = 0;
+            lastTap = now;
+            if (++tapCount >= 10) {
+                tapCount = 0;
+                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                finish();
+            }
+        });
         Ui.text(this, l, name, 26, Color.WHITE, true);
         Ui.text(this, l, reason == null ? "האפליקציה חסומה" : reason, 19, 0xFFFDE68A, true);
 
