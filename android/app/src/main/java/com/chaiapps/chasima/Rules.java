@@ -99,6 +99,10 @@ final class Rules {
         String rule = rule(cfg, pkg);
         String mode = mode(cfg, now);
 
+        // אישור זמני מאבא לאפליקציה מסוימת ("פתח עכשיו") – עוקף נעילה, שעות ומכסה
+        JSONObject pass = cfg.optJSONObject("pass");
+        if (pass != null && pass.optLong(Cfg.key(pkg), 0) > now) return null;
+
         if (rule.equals("always")) return null;
 
         if (mode.equals("lock")) return "הנגן נעול כרגע על ידי אבא";

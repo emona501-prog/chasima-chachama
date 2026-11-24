@@ -450,6 +450,7 @@ function renderStatus(){
   if(st.guard===false) a += `<div class="alert">⚠️ השומר בנגן כובה! ההגנה לא פעילה</div>`;
   if(st.admin===false) a += `<div class="alert">⚠️ ההגנה מפני מחיקה כבויה בנגן</div>`;
   if(st.seen && !on && st.guard!==false) a += `<div class="alert" style="background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.5)">הנגן לא דיווח ${ago(st.seen)} – אולי כבוי או בלי אינטרנט</div>`;
+  if(st.now && st.seen && Math.abs(st.now-st.seen) > 5*60000) a += `<div class="alert">⏰ השעון בנגן לא מדויק (הפרש של ${Math.round(Math.abs(st.now-st.seen)/60000)} דק׳) – שעות המסך יעבדו לא נכון. בנגן: הגדרות ← תאריך ושעה ← "אוטומטי"</div>`;
   $("alerts").innerHTML = a;
   const info = S.info||{};
   if($("updMsg")) $("updMsg").textContent = st.upd ? ("מצב עדכון: " + st.upd) : "";
@@ -457,6 +458,7 @@ function renderStatus(){
     <div>📍 עכשיו פתוח: <b style="color:#fff">${esc(st.an||"מסך הבית")}</b></div>
     <div>⏱️ זמן מסך היום: <b style="color:#fff">${fmtMin(usedToday())}</b>${limitTxt()}</div>
     <div>📥 הנגן קיבל הגדרות: ${st.cfgAt? ago(st.cfgAt) : "—"}${st.err?` · <span style="color:#fca5a5">שגיאה: ${esc(st.err)}</span>`:""}</div>
+    ${st.blk&&st.blk.n?`<div>🚫 נחסם לאחרונה: <b style="color:#fff">${esc(st.blk.n)}</b> – ${esc(st.blk.why||"")} · ${ago(st.blk.t)}</div>`:""}
     <div>🔋 סוללה: ${st.bat!=null? st.bat+"%":"—"} · עדכון אחרון: ${ago(st.seen)}</div>
     <div>📱 ${esc(info.model||"")} · אנדרואיד ${esc(info.android||"")} · גרסה ${esc(st.v||"")}</div>`;
 }
@@ -503,18 +505,39 @@ function renderReqs(){
   $("reqs").innerHTML = ks.length ? ks.map(k=>`
     <div class="app">${appIcon(k)}
       <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
-    </div>${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
-    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 10px">
+    </div>${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
+    <div class="grid2" style="grid-template-columns:1fr 1fr;margin:6px 0 4px">
+      <button class="y sm" onclick="openNow('${k}',30)">🔓 פתח עכשיו ל־30 ד׳</button>
+      <button class="y sm" onclick="openNow('${k}',60)">🔓 פתח עכשיו לשעה</button>
+    </div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:4px 0 10px">
       <button class="sm" onclick="answer('${k}','allow')">✔️ מותר</button>
       <button class="g sm" onclick="answer('${k}','always')">⭐ תמיד</button>
       <button class="r sm" onclick="answer('${k}','block')">✖️ דחה</button>
     </div>`).join("") : `<p class="muted">אין בקשות חדשות 👍</p>`;
 }
+function timeWhy(w){ return /שעות|זמן המסך|נעול|מנוחה/.test(w||""); }
 async function answer(k, val){
+  const why = ((S.req||{})[k]||{}).why || "";
+  S.cfg.rules = Object.assign({}, S.cfg.rules, {[k]:val});
+  if(S.req) { delete S.req[k]; renderReqs(); }
   try{
     await fb("PATCH", `d/${ID}/cfg/rules`, {[k]: val});
     await fb("DELETE", `d/${ID}/req/${k}`);
-    toast(val==="block" ? "✖️ נדחה" : "✅ אושר");
+    if(val==="allow" && timeWhy(why)) toast("✅ אושר – אבל ייפתח רק בשעות המסך. לפתיחה מיד: ⭐ תמיד או 🔓 פתח עכשיו");
+    else toast(val==="block" ? "✖️ נדחה" : "✅ אושר – נפתח בנגן");
+  }catch(e){ toast("❌ "+e.message); }
+}
+async function openNow(k, min){
+  const until = Date.now()+min*60000;
+  S.cfg.pass = Object.assign({}, S.cfg.pass, {[k]:until});
+  if(S.req) { delete S.req[k]; renderReqs(); }
+  try{
+    const o = {[k]:until};
+    await fb("PATCH", `d/${ID}/cfg/pass`, o);
+    if(!rule(k)) await fb("PATCH", `d/${ID}/cfg/rules`, {[k]:"allow"});
+    await fb("DELETE", `d/${ID}/req/${k}`);
+    toast(`🔓 פתוח עכשיו ל־${min} דק׳`);
   }catch(e){ toast("❌ "+e.message); }
 }
 

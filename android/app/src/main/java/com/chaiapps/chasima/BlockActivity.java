@@ -15,7 +15,7 @@ import org.json.JSONObject;
 /** המסך שהילד רואה כשאפליקציה חסומה. */
 public class BlockActivity extends Activity {
 
-    private String pkg = "", name = "";
+    private String pkg = "", name = "", why = "";
     private int tapCount = 0;
     private long lastTap = 0;
 
@@ -72,6 +72,7 @@ public class BlockActivity extends Activity {
         pkg = in.getStringExtra("pkg");
         name = in.getStringExtra("name");
         String reason = in.getStringExtra("reason");
+        why = reason == null ? "" : reason;
         if (pkg == null) pkg = "";
         if (name == null) name = pkg;
 
@@ -143,6 +144,7 @@ public class BlockActivity extends Activity {
             JSONObject r = new JSONObject();
             r.put("p", pkg);
             r.put("n", name);
+            r.put("why", why);
             if (!msg.isEmpty()) r.put("msg", msg);
             r.put("t", new JSONObject().put(".sv", "timestamp"));
             Fb.put("d/" + Cfg.deviceId(this) + "/req/" + Cfg.key(pkg), r.toString());

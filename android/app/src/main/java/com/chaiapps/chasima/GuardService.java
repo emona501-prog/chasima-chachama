@@ -44,7 +44,6 @@ public class GuardService extends AccessibilityService {
     private long settingsTapsAt = 0;
     private long lastBeat = 0;
     private volatile Ringtone alarmRt;
-    private long lastHandledAlarm = 0, lastHandledPhoto = 0, lastHandledLoc = 0, lastHandledBanner = 0, lastHandledUpd = 0;
 
     private final BroadcastReceiver pkgReceiver = new BroadcastReceiver() {
         @Override
@@ -177,6 +176,14 @@ public class GuardService extends AccessibilityService {
         if (pkg.equals(lastBlockPkg) && now - lastBlockAt < 1200) return;
         lastBlockPkg = pkg;
         lastBlockAt = now;
+        final String bn = Apps.label(this, pkg), br = reason;
+        io.execute(() -> {
+            try {
+                JSONObject bl = new JSONObject().put("n", bn).put("why", br)
+                        .put("t", new JSONObject().put(".sv", "timestamp"));
+                Fb.patch("d/" + Cfg.deviceId(this) + "/st", new JSONObject().put("blk", bl).toString());
+            } catch (Exception ignored) {}
+        });
         performGlobalAction(GLOBAL_ACTION_HOME);
         Intent i = new Intent(this, BlockActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -198,56 +205,45 @@ public class GuardService extends AccessibilityService {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)), 120);
     }
 
-    /** פקודות מיידיות מההורה: אזעקה, צילום, איתור. */
+    /** פקודה חדשה מההורה? נשמר בזיכרון קבוע, כך שלא תלוי בשעון של הנגן ולא חוזר אחרי הפעלה מחדש. */
+    private boolean fresh(String name, long v) {
+        if (v <= 0) return false;
+        android.content.SharedPreferences sp = Cfg.p(this);
+        String k = "cmd_" + name;
+        if (!sp.contains(k)) { sp.edit().putLong(k, v).apply(); return false; } // פעם ראשונה – רק מסמנים
+        if (v <= sp.getLong(k, 0)) return false;
+        sp.edit().putLong(k, v).apply();
+        return true;
+    }
+
+    /** פקודות מיידיות מההורה: אזעקה, צילום, איתור, הודעה, עדכון. */
     private void handleCmds() {
         JSONObject cfg = Cfg.cfg(this);
         long a = cfg.optLong("alarm", 0);
-        long now = System.currentTimeMillis();
-        if (a > lastHandledAlarm) {
-            lastHandledAlarm = a;
-            if (a > 0 && now - a < 5 * 60000L) startAlarm();
-            else stopAlarm();
-        }
-        long ph = cfg.optLong("photoReq", 0);
-        if (ph > lastHandledPhoto) {
-            lastHandledPhoto = ph;
-            if (ph > 0 && now - ph < 5 * 60000L) io.execute(() -> StealthCam.capture(this, "parent"));
-        }
+        if (fresh("alarm", a)) startAlarm();
+        else if (a == 0 && alarmRt != null && alarmRt.isPlaying()) stopAlarm();
+        if (fresh("photo", cfg.optLong("photoReq", 0))) io.execute(() -> StealthCam.capture(this, "parent"));
         JSONObject banner = cfg.optJSONObject("banner");
-        if (banner != null) {
-            long bt = banner.optLong("t", 0);
-            if (bt > lastHandledBanner) {
-                lastHandledBanner = bt;
-                if (bt > 0 && now - bt < 10 * 60000L) {
-                    final String txt = banner.optString("txt", "");
-                    main.post(() -> {
-                        try {
-                            startActivity(new Intent(this, BannerActivity.class)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                    .putExtra("txt", txt));
-                        } catch (Exception ignored) {}
-                    });
-                }
-            }
-        }
-        long ur = cfg.optLong("updateReq", 0);
-        if (ur > lastHandledUpd) {
-            lastHandledUpd = ur;
-            if (ur > 0 && now - ur < 10 * 60000L) {
-                main.post(() -> Updater.run(this, msg -> io.execute(() -> {
-                    try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"upd\":" + JSONObject.quote(msg) + "}"); }
-                    catch (Exception ignored) {}
-                })));
-            }
-        }
-        long lr = cfg.optLong("locateReq", 0);
-        if (lr > lastHandledLoc) {
-            lastHandledLoc = lr;
-            if (lr > 0 && now - lr < 5 * 60000L) io.execute(() -> {
-                JSONObject lc = Loc.last(this);
-                try { if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString()); } catch (Exception ignored) {}
+        if (banner != null && fresh("banner", banner.optLong("t", 0))) {
+            final String txt = banner.optString("txt", "");
+            main.post(() -> {
+                try {
+                    startActivity(new Intent(this, BannerActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            .putExtra("txt", txt));
+                } catch (Exception ignored) {}
             });
         }
+        if (fresh("upd", cfg.optLong("updateReq", 0))) {
+            main.post(() -> Updater.run(this, msg -> io.execute(() -> {
+                try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"upd\":" + JSONObject.quote(msg) + "}"); }
+                catch (Exception ignored) {}
+            })));
+        }
+        if (fresh("loc", cfg.optLong("locateReq", 0))) io.execute(() -> {
+            JSONObject lc = Loc.last(this);
+            try { if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString()); } catch (Exception ignored) {}
+        });
     }
 
     private void startAlarm() {
@@ -362,6 +358,13 @@ public class GuardService extends AccessibilityService {
         if (last.isEmpty()) return; // הפעם הראשונה – רק מסמנים
         if (!"p".equals(m.optString("from"))) return;
         Notify.chat(this, m.optString("txt", ""));
+        // פותחים את מסך ההודעות מיד, כדי שהילד יראה גם אם ההתראות כבויות
+        main.post(() -> {
+            try {
+                startActivity(new Intent(this, ChatActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            } catch (Exception ignored) {}
+        });
     }
 
     private void pullCfg(String path) {
@@ -399,6 +402,7 @@ public class GuardService extends AccessibilityService {
                 st.put("rules", rl == null ? 0 : rl.length());
                 st.put("err", Cfg.p(this).getString("cfgErr", ""));
                 st.put("day", Cfg.today());
+                st.put("now", System.currentTimeMillis());
                 st.put("loc", Loc.allowed(this));
                 JSONObject lc = Loc.last(this);
                 if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString());
