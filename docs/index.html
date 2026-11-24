@@ -341,8 +341,10 @@ function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");cle
 
 async function fb(method, path, body){
   let r;
-  try{ r = await fetch(`${DB}/${path}.json`, {method, cache:"no-store", body: body===undefined?undefined:JSON.stringify(body)}); }
-  catch(e){ NETERR = "אין חיבור לשרת (אינטרנט?)"; showNet(); throw new Error(NETERR); }
+  const ac = new AbortController(), to = setTimeout(()=>ac.abort(), 15000);
+  try{ r = await fetch(`${DB}/${path}.json`, {method, cache:"no-store", signal: ac.signal, body: body===undefined?undefined:JSON.stringify(body)}); }
+  catch(e){ clearTimeout(to); NETERR = "אין חיבור לשרת (אינטרנט?)"; showNet(); throw new Error(NETERR); }
+  clearTimeout(to);
   if(!r.ok){ let t=""; try{ t=(await r.text()).slice(0,120); }catch(e){} NETERR = "השרת סירב ("+r.status+") "+t; showNet(); throw new Error(NETERR); }
   if(NETERR){ NETERR=""; showNet(); }
   return r.json();
@@ -409,23 +411,22 @@ function listen(node, q=""){
 }
 function start(){
   $("connect").classList.add("hide"); $("app").classList.remove("hide");
-  ["cfg","st","req","apps","info"].forEach(n=>listen(n));
-  listen("chat", '?orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=100');
-  listen("loc"); listen("photo"); listen("sitereq");
+  // בלי האזנות חיות: הדפדפן מרשה רק 6 חיבורים פתוחים לשרת, וההאזנות חסמו את השליחה (אישורים/הודעות)
+  pollN = -1; pollAll(true);
   if(window.ChasimaApp) try{ ChasimaApp.setDevice(ID); }catch(e){}
   const h = location.hash.replace("#",""); if(h) tab(h);
   setInterval(()=>{ renderStatus(); renderMode(); renderUsage(); renderSites(); }, 10000);
-  setInterval(pollAll, 6000);   // גיבוי: מושכים נתונים כל 6 שניות גם אם ההאזנה החיה נתקעת
+  setInterval(pollAll, 3000);   // מושכים נתונים כל 3 שניות
   $("devId").textContent = "מזהה נגן: " + ID;
   setTimeout(()=>{ renderStatus(); pollAll(); }, 1500);
 }
 let polling=false, pollN=0;
-async function pollAll(){
-  if(polling || document.hidden) return; polling=true;
+async function pollAll(force){
+  if(polling || (document.hidden && !force)) return; polling=true;
   try{
-    // כל 6 שניות: רק נתונים קטנים. אפליקציות ותמונות (כבדים) – רק פעם ב-5 סבבים
-    const nodes = (++pollN % 5 === 0)
-      ? ["cfg","st","req","sitereq","loc","chat","apps","photo"]
+    // כל 3 שניות: רק נתונים קטנים. אפליקציות ותמונות (כבדים) – פעם ב-10 סבבים
+    const nodes = (++pollN % 10 === 0)
+      ? ["cfg","st","req","sitereq","loc","chat","apps","photo","info"]
       : ["cfg","st","req","sitereq","loc","chat"];
     for(const n of nodes){
       const v = await fb("GET", `d/${ID}/${n}`);
