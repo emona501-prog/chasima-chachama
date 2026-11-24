@@ -210,14 +210,28 @@ public class GuardService extends AccessibilityService {
         if (v <= 0) return false;
         android.content.SharedPreferences sp = Cfg.p(this);
         String k = "cmd_" + name;
-        if (!sp.contains(k)) { sp.edit().putLong(k, v).apply(); return false; } // פעם ראשונה – רק מסמנים
         if (v <= sp.getLong(k, 0)) return false;
         sp.edit().putLong(k, v).apply();
         return true;
     }
 
+    /** בהפעלה הראשונה של הגרסה: מסמנים פקודות ישנות כ"טופלו" כדי שלא יקפצו שוב. */
+    private void initCmds() {
+        android.content.SharedPreferences sp = Cfg.p(this);
+        if (sp.getBoolean("cmdInit", false)) return;
+        JSONObject cfg = Cfg.cfg(this);
+        JSONObject b = cfg.optJSONObject("banner");
+        sp.edit().putLong("cmd_alarm", cfg.optLong("alarm", 0))
+                .putLong("cmd_photo", cfg.optLong("photoReq", 0))
+                .putLong("cmd_banner", b == null ? 0 : b.optLong("t", 0))
+                .putLong("cmd_upd", cfg.optLong("updateReq", 0))
+                .putLong("cmd_loc", cfg.optLong("locateReq", 0))
+                .putBoolean("cmdInit", true).apply();
+    }
+
     /** פקודות מיידיות מההורה: אזעקה, צילום, איתור, הודעה, עדכון. */
     private void handleCmds() {
+        initCmds();
         JSONObject cfg = Cfg.cfg(this);
         long a = cfg.optLong("alarm", 0);
         if (fresh("alarm", a)) startAlarm();
@@ -240,10 +254,15 @@ public class GuardService extends AccessibilityService {
                 catch (Exception ignored) {}
             })));
         }
-        if (fresh("loc", cfg.optLong("locateReq", 0))) io.execute(() -> {
-            JSONObject lc = Loc.last(this);
-            try { if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString()); } catch (Exception ignored) {}
-        });
+        if (fresh("loc", cfg.optLong("locateReq", 0))) {
+            io.execute(() -> { try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"locMsg\":\"⏳ מחפש מיקום…\"}"); } catch (Exception ignored) {} });
+            Loc.fresh(this, (lc, err) -> io.execute(() -> {
+                try {
+                    if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString());
+                    Fb.patch("d/" + Cfg.deviceId(this) + "/st", new JSONObject().put("locMsg", err).toString());
+                } catch (Exception ignored) {}
+            }));
+        }
     }
 
     private void startAlarm() {

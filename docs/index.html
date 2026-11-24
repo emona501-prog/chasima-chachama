@@ -230,7 +230,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
     <div id="t-secure" class="hide">
       <div class="card">
         <h2>📍 מיקום הנגן</h2>
-        <div id="locInfo" class="muted">—</div>
+        <div id="locInfo" class="muted">—</div><div id="locMsg" style="color:#fde68a;margin-top:6px"></div>
         <div class="grid2" style="margin-top:10px">
           <button onclick="locateNow()">🔄 אתר עכשיו</button>
           <a id="mapBtn" class="hide" style="display:block;text-align:center;text-decoration:none"><button class="g" style="width:100%">🗺️ פתח במפה</button></a>
@@ -441,7 +441,7 @@ function render(node){
   if(node==="loc") renderSecure();
   if(node==="photo") renderPhoto();
   if(node==="chat") renderChat();
-  if(node==="st") renderUsage();
+  if(node==="st"){ renderUsage(); renderSecure(); }
   if(node==="st"||node==="info") renderStatus();
   if(node==="req") renderReqs();
   if(node==="apps"){ renderApps(); renderReqs(); }
@@ -706,6 +706,7 @@ function sendBanner(){
 /* ---------- איתור ואבטחה ---------- */
 function renderSecure(){
   const lc=S.loc||{};
+  setTimeout(()=>{ const m=$("locMsg"); if(m) m.textContent=(S.st||{}).locMsg||""; },0);
   if(lc.lat!=null){
     $("locInfo").innerHTML = `מיקום אחרון: <b style="color:#fff">${(+lc.lat).toFixed(5)}, ${(+lc.lng).toFixed(5)}</b><br>דיוק ~${lc.acc||"?"} מ׳ · ${ago(lc.t)}`;
     $("mapBtn").href = `https://www.google.com/maps/search/?api=1&query=${lc.lat},${lc.lng}`;
@@ -720,7 +721,7 @@ function renderSecure(){
   }
   renderPhoto();
 }
-const locateNow = () => patchCfg({locateReq: Date.now()}, "🔄 מבקש מיקום מהנגן… (עד דקה)");
+const locateNow = () => { S.st = Object.assign({}, S.st, {locMsg:"⏳ שולח בקשה לנגן…"}); renderSecure(); patchCfg({locateReq: Date.now()}, "🔄 מבקש מיקום מהנגן… (עד דקה)"); };
 const alarmOn = () => patchCfg({alarm: Date.now()}, "🔊 האזעקה מופעלת בנגן");
 const alarmOff = () => patchCfg({alarm: 0}, "האזעקה הופסקה");
 function saveLost(){ patchCfg({lost:{on:$("lostOn").checked, msg:$("lostMsg").value.trim()}}, $("lostOn").checked?"🔒 הנגן ננעל מרחוק":"🔓 הנעילה בוטלה"); }
