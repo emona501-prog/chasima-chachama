@@ -127,6 +127,18 @@ public class MainActivity extends Activity {
             stopService(new Intent(MainActivity.this, AlertService.class));
         }
 
+        /** בקשה לשרת דרך האפליקציה עצמה (עוקף מגבלות של דפדפן). התשובה חוזרת ל-window.__fbcb. */
+        @JavascriptInterface
+        public void http(final String cbId, final String method, final String path, final String body) {
+            new Thread(() -> {
+                int ok = 1; String res;
+                try { res = Fb.raw(method, path, body == null || body.isEmpty() ? null : body); }
+                catch (Exception e) { ok = 0; res = String.valueOf(e.getMessage()); }
+                final String js = "window.__fbcb&&__fbcb(" + org.json.JSONObject.quote(cbId) + "," + ok + "," + org.json.JSONObject.quote(res == null ? "" : res) + ")";
+                runOnUiThread(() -> { try { web.evaluateJavascript(js, null); } catch (Exception ignored) {} });
+            }).start();
+        }
+
         @JavascriptInterface
         public String getDevice() {
             return prefs(MainActivity.this).getString("id", "");

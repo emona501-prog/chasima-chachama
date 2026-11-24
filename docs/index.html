@@ -339,7 +339,21 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const key = p => p.replace(/\./g, ",");
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("show"),2200)}
 
+const FBCB = {}; let fbN = 0;
+window.__fbcb = (id, ok, txt) => { const c=FBCB[id]; if(!c) return; delete FBCB[id]; ok ? c.res(txt) : c.rej(new Error(txt)); };
+const NATIVE = (()=>{ try{ return !!(window.ChasimaApp && ChasimaApp.http); }catch(e){ return false; } })();
 async function fb(method, path, body){
+  if(NATIVE){
+    try{
+      const txt = await new Promise((res, rej) => {
+        const id = "c"+(++fbN); FBCB[id] = {res, rej};
+        setTimeout(()=>{ if(FBCB[id]){ delete FBCB[id]; rej(new Error("תם הזמן")); } }, 20000);
+        ChasimaApp.http(id, method, path, body===undefined ? "" : JSON.stringify(body));
+      });
+      if(NETERR){ NETERR=""; showNet(); }
+      return txt ? JSON.parse(txt) : null;
+    }catch(e){ NETERR = "שגיאת חיבור: "+e.message; showNet(); throw new Error(NETERR); }
+  }
   let r;
   const ac = new AbortController(), to = setTimeout(()=>ac.abort(), 15000);
   try{ r = await fetch(`${DB}/${path}.json`, {method, cache:"no-store", signal: ac.signal, body: body===undefined?undefined:JSON.stringify(body)}); }

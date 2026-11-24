@@ -68,6 +68,10 @@ final class Fb {
         return callUrl(method, url(path), body);
     }
 
+    static String raw(String method, String path, String body) throws IOException {
+        return callUrl(method, url(path), body);
+    }
+
     private static String callUrl(String method, String fullUrl, String body) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(fullUrl).openConnection();
         c.setConnectTimeout(15000);
