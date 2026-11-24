@@ -435,7 +435,6 @@ public class GuardService extends AccessibilityService {
     @Override
     public void onInterrupt() {}
 
-    @Override
     /* ---------- בועת טיימר קטנה למעלה במסך ---------- */
     private android.widget.TextView pill;
     private final Runnable pillTick = new Runnable() {
@@ -480,6 +479,7 @@ public class GuardService extends AccessibilityService {
         pill.setText(txt);
     }
 
+    @Override
     public void onDestroy() {
         stop.set(true);
         instance = null;
