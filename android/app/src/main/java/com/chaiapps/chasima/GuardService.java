@@ -93,6 +93,7 @@ public class GuardService extends AccessibilityService {
         io.execute(() -> Apps.report(this));
         io.execute(() -> pullCfg("d/" + Cfg.deviceId(this) + "/cfg"));
         main.postDelayed(tick, 3000);
+        main.postDelayed(pillTick, 2000);
         beat();
     }
 
@@ -435,6 +436,50 @@ public class GuardService extends AccessibilityService {
     public void onInterrupt() {}
 
     @Override
+    /* ---------- בועת טיימר קטנה למעלה במסך ---------- */
+    private android.widget.TextView pill;
+    private final Runnable pillTick = new Runnable() {
+        @Override public void run() {
+            try { updatePill(); } catch (Exception ignored) {}
+            if (!stop.get()) main.postDelayed(this, 1000);
+        }
+    };
+
+    private void updatePill() {
+        Timer.State st = Cfg.p(this).getBoolean("pillOff", false) ? null : Timer.get(this, false);
+        android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+        if (st == null) {
+            if (pill != null) { try { wm.removeView(pill); } catch (Exception ignored) {} pill = null; }
+            return;
+        }
+        String txt = st.title + "  " + Timer.left(st.end);
+        if (pill == null) {
+            pill = new android.widget.TextView(this);
+            pill.setTextColor(0xFFFFFFFF);
+            pill.setTextSize(15);
+            pill.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            int pd = (int) (8 * getResources().getDisplayMetrics().density);
+            pill.setPadding(pd * 2, pd, pd * 2, pd);
+            android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams(
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                    android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    android.graphics.PixelFormat.TRANSLUCENT);
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
+            lp.y = (int) (34 * getResources().getDisplayMetrics().density);
+            try { wm.addView(pill, lp); } catch (Exception e) { pill = null; return; }
+        }
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(60);
+        long left = st.end - System.currentTimeMillis();
+        bg.setColor(st.locked ? 0xEEDC2626 : (left < 5 * 60000 ? 0xEEF59E0B : 0xEE16A34A));
+        pill.setBackground(bg);
+        pill.setText(txt);
+    }
+
     public void onDestroy() {
         stop.set(true);
         instance = null;

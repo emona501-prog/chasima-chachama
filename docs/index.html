@@ -144,6 +144,16 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
           <button class="r sm" onclick="setMode('lock',180)">3 שעות</button>
           <button class="r sm" onclick="lockTomorrow()">עד מחר</button>
         </div>
+        <p class="muted" style="margin:12px 0 6px">✍️ זמן לבחירתך:</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="cusH" type="number" inputmode="numeric" min="0" placeholder="שעות" style="flex:1;min-width:0">
+          <input id="cusM" type="number" inputmode="numeric" min="0" placeholder="דקות" style="flex:1;min-width:0">
+        </div>
+        <div class="grid2" style="grid-template-columns:1fr 1fr;margin-top:8px">
+          <button class="g sm" onclick="customMode('free')">🎉 זמן חופשי</button>
+          <button class="r sm" onclick="customMode('lock')">🔒 נעילה</button>
+        </div>
+        <p class="muted" style="margin:8px 0 0">⏱️ הילד רואה בנגן טיימר שסופר לאחור עד שזה נגמר.</p>
       </div>
       <div class="card">
         <h2>📩 בקשות <span id="reqCount" class="badge hide"></span></h2>
@@ -205,6 +215,10 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
           <button class="p sm" onclick="addBonus(30)">+30 ד׳</button>
           <button class="p sm" onclick="addBonus(60)">+שעה</button>
           <button class="ghost sm" onclick="addBonus(0)">איפוס</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="bonM" type="number" inputmode="numeric" min="1" placeholder="דקות בונוס לבחירתך" style="flex:1;min-width:0">
+          <button class="p sm" onclick="const m=+$('bonM').value; if(m>0){ addBonus(m); $('bonM').value=''; } else toast('כתוב מספר דקות')">🎁 הוסף</button>
         </div>
       </div>
 
@@ -512,6 +526,12 @@ function togglePause(){
   const off = (S.cfg||{}).mode==="off";
   if(off) patchCfg({mode:"normal", until:0}, "▶️ ההגנה חזרה לפעול");
   else patchCfg({mode:"off", until:0}, "⏸️ ההגנה הושהתה – הכל פתוח");
+}
+function customMode(mode){
+  const m = (+$("cusH").value||0)*60 + (+$("cusM").value||0);
+  if(!(m>0)) return toast("כתוב כמה שעות ו/או דקות");
+  if(m>24*60*7) return toast("עד שבוע לכל היותר");
+  setMode(mode, m); $("cusH").value=""; $("cusM").value="";
 }
 async function setMode(mode, min){
   await patchCfg({mode, until: min ? Date.now()+min*60000 : 0},

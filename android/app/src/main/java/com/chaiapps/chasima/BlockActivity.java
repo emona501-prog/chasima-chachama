@@ -91,6 +91,16 @@ public class BlockActivity extends Activity {
         });
         Ui.text(this, l, name, 26, Color.WHITE, true);
         Ui.text(this, l, reason == null ? "האפליקציה חסומה" : reason, 19, 0xFFFDE68A, true);
+        final TextView timerTv = Ui.text(this, l, "", 18, 0xFFFFFFFF, true);
+        final android.os.Handler th = new android.os.Handler(android.os.Looper.getMainLooper());
+        th.post(new Runnable() {
+            @Override public void run() {
+                if (isFinishing()) return;
+                Timer.State st = Timer.get(BlockActivity.this, true);
+                timerTv.setText(st == null ? "" : Timer.line(st));
+                th.postDelayed(this, 1000);
+            }
+        });
 
         String msg = Cfg.cfg(this).optString("msg", "");
         if (!msg.isEmpty()) {
