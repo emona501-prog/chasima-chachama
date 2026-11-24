@@ -391,7 +391,7 @@ public class GuardService extends AccessibilityService {
             String json = Fb.get(path);
             String old = Cfg.p(this).getString("cfg", "");
             Cfg.saveCfg(this, json);
-            Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).apply();
+            Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).putString("cfgErr", "").apply();
             if (!old.equals(json)) recheck();
             handleCmds();
         } catch (Exception ex) {

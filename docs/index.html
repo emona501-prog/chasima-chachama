@@ -485,7 +485,7 @@ function renderStatus(){
   $("devInfo").innerHTML = `
     <div>📍 עכשיו פתוח: <b style="color:#fff">${esc(st.an||"מסך הבית")}</b></div>
     <div>⏱️ זמן מסך היום: <b style="color:#fff">${fmtMin(usedToday())}</b>${limitTxt()}</div>
-    <div>📥 הנגן קיבל הגדרות: ${st.cfgAt? ago(st.cfgAt) : "—"}${st.err?` · <span style="color:#fca5a5">שגיאה: ${esc(st.err)}</span>`:""}</div>
+    <div>📥 הנגן קיבל הגדרות: ${st.cfgAt? ago(st.cfgAt) : "—"}${st.err && !(st.cfgAt && st.seen && st.seen-st.cfgAt<120000)?` · <span style="color:#fca5a5">${/resolve host|timeout|timed out|connect/i.test(st.err)?"לנגן אין אינטרנט":"שגיאה: "+esc(st.err)}</span>`:""}</div>
     ${st.blk&&st.blk.n?`<div>🚫 נחסם לאחרונה: <b style="color:#fff">${esc(st.blk.n)}</b> – ${esc(st.blk.why||"")} · ${ago(st.blk.t)}</div>`:""}
     <div>🔋 סוללה: ${st.bat!=null? st.bat+"%":"—"} · עדכון אחרון: ${ago(st.seen)}</div>
     <div>📱 ${esc(info.model||"")} · אנדרואיד ${esc(info.android||"")} · גרסה ${esc(st.v||"")}</div>`;
