@@ -329,6 +329,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
 const DB = (window.DB_URL || "").replace(/\/+$/, "");
 const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 let ID = localStorage.getItem("ch_id") || "";
+try{ if(!ID && window.ChasimaApp && ChasimaApp.getDevice){ ID = ChasimaApp.getDevice() || ""; if(ID) localStorage.setItem("ch_id", ID); } }catch(e){}
 const S = { cfg: {}, st: {}, req: {}, apps: {}, info: {} };
 let filter = "all", streams = [];
 

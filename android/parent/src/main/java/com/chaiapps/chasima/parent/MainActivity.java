@@ -34,7 +34,8 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        web.clearCache(true);
         web.addJavascriptInterface(new Bridge(), "ChasimaApp");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -96,6 +97,21 @@ public class MainActivity extends Activity {
         else super.onBackPressed();
     }
 
+    private long pausedAt = 0;
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        pausedAt = System.currentTimeMillis();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // חוזרים לאפליקציה אחרי זמן – טוענים מחדש כדי שהחיבור יהיה טרי
+        if (pausedAt > 0 && System.currentTimeMillis() - pausedAt > 60000 && web != null) web.reload();
+    }
+
     /** גשר בין האתר לאפליקציה: האתר מודיע לאיזה נגן התחברנו. */
     class Bridge {
         @JavascriptInterface
@@ -109,6 +125,11 @@ public class MainActivity extends Activity {
         public void clearDevice() {
             prefs(MainActivity.this).edit().remove("id").apply();
             stopService(new Intent(MainActivity.this, AlertService.class));
+        }
+
+        @JavascriptInterface
+        public String getDevice() {
+            return prefs(MainActivity.this).getString("id", "");
         }
 
         @JavascriptInterface
