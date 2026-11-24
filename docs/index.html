@@ -118,6 +118,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
   <main>
     <!-- בית -->
     <div id="t-home">
+      <div class="card"><button class="y" style="width:100%" onclick="diag()">🩺 בדיקת חיבור</button><div id="diagOut" class="muted" style="margin-top:10px;line-height:1.8"></div></div>
       <div id="netErr" class="alert hide"></div><div id="alerts"></div>
       <div class="card" id="pauseCard">
         <button id="pauseBtn" style="width:100%;font-size:18px;padding:14px" onclick="togglePause()">⏸️ השהה את כל ההגנה</button>
@@ -807,6 +808,35 @@ function tab(t){
   if(t==="chat"){ markRead(); setTimeout(()=>scrollTo(0, document.body.scrollHeight),50); return; }
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));
   scrollTo(0,0);
+}
+
+/* ---------- בדיקת חיבור ---------- */
+async function diag(){
+  const out=$("diagOut"); const L=[]; const say=t=>{L.push(t); out.innerHTML=L.join("<br>");};
+  say("⏳ בודק…");
+  const T=Date.now();
+  try{ await fb("PATCH", `d/${ID}/diag`, {w:T}); say("✅ כתיבה לשרת מהטלפון שלך עובדת"); }
+  catch(e){ say("❌ הטלפון שלך לא מצליח לכתוב לשרת: "+esc(e.message)); return; }
+  try{ const k=await fb("POST", `d/${ID}/diag/p`, {t:T}); await fb("DELETE", `d/${ID}/diag/p`); say("✅ שליחה ומחיקה עובדות"); }
+  catch(e){ say("❌ שליחה/מחיקה נכשלה: "+esc(e.message)); }
+  try{ await fb("PATCH", `d/${ID}/cfg`, {ping:T}); say("📤 שלחתי לנגן בדיקה… מחכה לתשובה (עד דקה)"); }
+  catch(e){ say("❌ "+esc(e.message)); return; }
+  for(let i=0;i<30;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    let st={}; try{ st=await fb("GET", `d/${ID}/st`)||{}; }catch(e){}
+    S.st=st;
+    if((st.cfgAt||0) > T){
+      const pr=Object.keys((S.cfg||{}).rules||{}).length;
+      say(`✅ הנגן קיבל את ההגדרות שלך (תוך ${Math.round((st.cfgAt-T)/1000)} שניות)`);
+      say(`📋 כללים אצלך: ${pr} · כללים בנגן: ${st.rules}` + (st.rules>=pr?" ✅":" ❌ הנגן לא מעודכן"));
+      if(st.blk&&st.blk.n) say(`🚫 חסימה אחרונה בנגן: ${esc(st.blk.n)} – ${esc(st.blk.why||"")} (${ago(st.blk.t)})`);
+      say(`📱 גרסת נגן: ${esc(st.v||"?")}`);
+      return;
+    }
+  }
+  const st=S.st||{};
+  say("❌ הנגן לא אישר קבלה תוך דקה.");
+  say(st.seen? `הנגן דיווח לאחרונה ${ago(st.seen)}, קיבל הגדרות ${ago(st.cfgAt)}${st.err?" · שגיאה: "+esc(st.err):""}` : "הנגן לא מדווח בכלל");
 }
 
 /* ---------- התחלה ---------- */
