@@ -9,6 +9,7 @@
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <script src="config.js"></script>
+<script src="nlsched.js"></script>
 <style>
 :root{--bg1:#0f1b3d;--bg2:#1e3a8a;--card:rgba(255,255,255,.08);--line:rgba(255,255,255,.12);--txt:#fff;--dim:rgba(255,255,255,.65);
 --green:#22c55e;--red:#ef4444;--gold:#f59e0b;--blue:#3b82f6;--purple:#a855f7}
@@ -226,6 +227,16 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <div class="row">
           <div style="flex:1"><b>🟦 שעות שימוש</b><div class="muted">אפליקציות "מותר" נפתחות רק בשעות האלה</div></div>
           <label class="sw"><input type="checkbox" id="schedOn" onchange="saveWins('sched')"><i></i></label>
+        </div>
+        <div class="card" style="background:rgba(255,255,255,.06);margin:10px 0">
+          <b>✍️ כתוב במילים שלך</b>
+          <div class="muted" style="margin:4px 0 8px">למשל: "ראשון עד חמישי פתוח מ-4 עד 7 בערב. שישי מ-9 בבוקר עד 12 בצהריים. שבת סגור." או "כל יום חסום מ-10 בלילה עד 7 בבוקר"</div>
+          <textarea id="nlText" rows="3" style="width:100%" placeholder="כתוב כאן את השעות…"></textarea>
+          <div class="grid2" style="margin-top:8px">
+            <button class="ghost sm" onclick="nlPreview()">👁️ בדוק מה הבנתי</button>
+            <button class="g sm" onclick="nlApply()">✅ הכנס לשעות</button>
+          </div>
+          <div id="nlOut" class="muted" style="margin-top:8px;line-height:1.8"></div>
         </div>
         <div id="days-sched"></div>
         <div class="grid2" style="margin-top:8px"><button class="ghost sm" onclick="checkAllDays('sched',true)">☑️ סמן את כל הימים</button><button class="ghost sm" onclick="checkAllDays('sched',false)">נקה סימון</button></div>
@@ -701,6 +712,26 @@ function applyChecked(kind, src){
   toast("✅ הוחל על "+chosen.length+" ימים");
 }
 function checkAllDays(kind,on){ for(let d=0;d<7;d++) CHK[kind][d]=on; renderWins(kind); }
+const DAYN=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+function nlParse(){
+  const t=$("nlText").value.trim(); if(!t){ toast("כתוב קודם את השעות"); return null; }
+  let r={}; try{ r=parseSchedText(t); }catch(e){}
+  if(!Object.keys(r).length){ $("nlOut").innerHTML="🤔 לא הצלחתי להבין. נסה לכתוב ימים ושעות, למשל: ראשון פתוח מ-14:00 עד 16:00"; return null; }
+  return r;
+}
+function nlPreview(){
+  const r=nlParse(); if(!r) return;
+  $("nlOut").innerHTML = Object.keys(r).sort().map(d=>`<b>${DAYN[d]}:</b> `+(r[d].length? r[d].map(w=>`🟢 ${w.f}–${w.t}`).join(" · ") : "🔒 סגור כל היום")).join("<br>")
+    + `<br><span style="color:#fde68a">מחוץ לחלונות 🟢 הנגן נעול. ימים שלא כתבת – לא משתנים.</span>`;
+}
+function nlApply(){
+  const r=nlParse(); if(!r) return;
+  if(!EDIT.sched) EDIT.sched = winDays("sched");
+  Object.keys(r).forEach(d=> EDIT.sched[+d] = r[d].map(w=>({f:w.f,t:w.t})));
+  $("schedOn").checked = true;
+  saveWins("sched"); renderWins("sched"); nlPreview();
+  toast("✅ השעות הוכנסו ל־"+Object.keys(r).length+" ימים");
+}
 function saveWins(kind){
   const days={}; EDIT[kind].forEach((w,i)=>days[i]=w);
   patchCfg({[kind]:{on:$(kind+"On").checked, days}}, "✅ נשמר");
