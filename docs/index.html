@@ -634,11 +634,17 @@ function renderReqs(){
     <div class="app">${appIcon(k)}
       <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
     </div>${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
-    ${r[k].sys ? `<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 10px">
-      <button class="y sm" onclick="sysOpen('${k}',10)">⚙️ פתח ל־10 ד׳</button>
-      <button class="y sm" onclick="sysOpen('${k}',30)">⚙️ פתח ל־30 ד׳</button>
+    ${r[k].sys ? `<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 4px">
+      <button class="y sm" onclick="sysOpen('${k}',10)">⚙️ 10 ד׳</button>
+      <button class="y sm" onclick="sysOpen('${k}',30)">⚙️ 30 ד׳</button>
+      <button class="y sm" onclick="sysOpen('${k}',60)">⚙️ שעה</button>
+    </div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:4px 0 4px">
+      <button class="y sm" onclick="sysOpen('${k}',180)">⚙️ 3 שעות</button>
+      <button class="y sm" onclick="sysOpen('${k}','day')">⚙️ עד סוף היום</button>
       <button class="r sm" onclick="answer('${k}','block')">✖️ דחה</button>
-    </div>` : `
+    </div>
+    <div class="muted" style="margin:0 0 10px">🔐 "לתמיד" אין להגדרות בכוונה – פתוחות לתמיד, הילד יכול לכבות משם את ההגנה. בלוטות׳ פתוח תמיד גם בלי אישור.</div>` : `
     <div class="grid2" style="grid-template-columns:1fr 1fr;margin:6px 0 4px">
       <button class="y sm" onclick="openNow('${k}',30)">🔓 פתח עכשיו ל־30 ד׳</button>
       <button class="y sm" onclick="openNow('${k}',60)">🔓 פתח עכשיו לשעה</button>
@@ -662,11 +668,12 @@ async function answer(k, val){
   }catch(e){ toast("❌ "+e.message); }
 }
 async function sysOpen(k, min){
+  if(min==="day"){ const e = new Date(); e.setHours(23,59,0,0); min = Math.max(1, Math.round((e-Date.now())/60000)); }
   if(S.req) { delete S.req[k]; renderReqs(); }
   try{
     await fb("PATCH", `d/${ID}/cfg`, {settingsUntil: Date.now()+min*60000});
     await fb("DELETE", `d/${ID}/req/${k}`);
-    toast(`⚙️ הגדרות והתקנת אפליקציות פתוחות ל־${min} דק׳`);
+    toast(min>=60 ? `⚙️ ההגדרות פתוחות ל־${Math.floor(min/60)} שע׳ ${min%60?min%60+" ד׳":""}` : `⚙️ הגדרות והתקנת אפליקציות פתוחות ל־${min} דק׳`);
   }catch(e){ toast("❌ "+e.message); }
 }
 async function openNow(k, min){
