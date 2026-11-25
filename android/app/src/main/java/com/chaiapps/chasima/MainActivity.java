@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.widget.Toast;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -264,6 +265,27 @@ public class MainActivity extends Activity {
         Ui.button(this, l, "🔄 עדכן את האפליקציה לגרסה האחרונה", Ui.BLUE,
                 v -> Updater.run(this, upd::setText));
 
+        // 📍 איתור, אזעקה ומצלמה – בדיקת הרשאות
+        LinearLayout lc = Ui.card(this, l);
+        Ui.text(this, lc, "📍 איתור ומצלמה", 16, Color.WHITE, true);
+        Ui.text(this, lc, (Loc.enabled(this) ? "✅" : "❌") + " מיקום דולק בנגן   " + (Loc.allowed(this) ? "✅" : "❌") + " הרשאת מיקום   "
+                + (Loc.bgAllowed(this) ? "✅" : "❌") + " מיקום גם ברקע   "
+                + (checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED ? "✅" : "❌") + " מצלמה", 14, 0xCCFFFFFF, false);
+        Ui.button(this, lc, "✅ לאשר הרשאות (מיקום + מצלמה)", Ui.GREEN, v -> {
+            Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 5 * 60000L);
+            java.util.List<String> need = new java.util.ArrayList<>();
+            for (String w : new String[]{android.Manifest.permission.CAMERA, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION})
+                if (checkSelfPermission(w) != android.content.pm.PackageManager.PERMISSION_GRANTED) need.add(w);
+            if (!need.isEmpty()) requestPermissions(need.toArray(new String[0]), 9);
+            else if (Build.VERSION.SDK_INT >= 29 && !Loc.bgAllowed(this)) requestPermissions(new String[]{"android.permission.ACCESS_BACKGROUND_LOCATION"}, 10);
+            else Toast.makeText(this, "כל ההרשאות מאושרות ✅", Toast.LENGTH_SHORT).show();
+        });
+        Ui.text(this, lc, "במיקום: לבחור \"לאפשר כל הזמן\" – אחרת האיתור לא עובד כשהנגן ברקע", 13, 0x99FFFFFF, false);
+        if (!Loc.enabled(this)) Ui.button(this, lc, "📍 להדליק מיקום בנגן", Ui.BLUE, v -> {
+            Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 5 * 60000L);
+            open(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+        });
+
         Ui.button(this, l, "⚙️ פתיחת הגדרות הנגן ל־10 דקות", Ui.BLUE, v -> {
             Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 10 * 60000L);
             open(new Intent(Settings.ACTION_SETTINGS));
@@ -442,6 +464,17 @@ public class MainActivity extends Activity {
     private void rule(String key, String val) {
         try { set("rules", new JSONObject().put(key, val), "✅ נשמר"); } catch (Exception ignored) {}
         buildAppsLocal();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == 9 && Build.VERSION.SDK_INT >= 29 && Loc.allowed(this) && !Loc.bgAllowed(this)) {
+            Cfg.setLocalSettingsUntil(this, System.currentTimeMillis() + 5 * 60000L);
+            requestPermissions(new String[]{"android.permission.ACCESS_BACKGROUND_LOCATION"}, 10);
+        } else if (req == 9 || req == 10) {
+            try { if (Cfg.setupDone(this)) buildParent(); } catch (Exception ignored) {}
+        }
     }
 
     private void open(Intent i) {

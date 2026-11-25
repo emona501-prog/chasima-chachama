@@ -258,8 +258,8 @@ public class GuardService extends AccessibilityService {
         initCmds();
         JSONObject cfg = Cfg.cfg(this);
         long a = cfg.optLong("alarm", 0);
-        if (fresh("alarm", a)) startAlarm();
-        else if (a == 0 && alarmRt != null && alarmRt.isPlaying()) stopAlarm();
+        if (fresh("alarm", a)) main.post(this::startAlarm);
+        else if (a == 0 && ((alarmMp != null) || (alarmRt != null && alarmRt.isPlaying()))) main.post(this::stopAlarm);
         if (fresh("photo", cfg.optLong("photoReq", 0))) io.execute(() -> StealthCam.capture(this, "parent"));
         JSONObject banner = cfg.optJSONObject("banner");
         if (banner != null && fresh("banner", banner.optLong("t", 0))) {
@@ -289,31 +289,60 @@ public class GuardService extends AccessibilityService {
         }
     }
 
+    private android.media.MediaPlayer alarmMp;
+
+    /** 🔊 אזעקה: צליל סירנה מתוך האפליקציה (לא תלוי בצלצולים של הנגן), בעוצמה מלאה, 60 שניות. */
     private void startAlarm() {
+        String err = "";
         try {
             AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
-            if (am != null) am.setStreamVolume(AudioManager.STREAM_ALARM,
-                    am.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0);
-            if (alarmRt != null && alarmRt.isPlaying()) return;
-            Uri u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (u == null) u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-            alarmRt = RingtoneManager.getRingtone(this, u);
-            if (alarmRt != null) {
-                alarmRt.setStreamType(AudioManager.STREAM_ALARM);
-                alarmRt.play();
+            if (am != null) {
+                for (int st : new int[]{AudioManager.STREAM_ALARM, AudioManager.STREAM_MUSIC, AudioManager.STREAM_RING})
+                    try { am.setStreamVolume(st, am.getStreamMaxVolume(st), 0); } catch (Exception ignored) {}
             }
+            if (alarmMp != null && alarmMp.isPlaying()) return;
+            alarmMp = new android.media.MediaPlayer();
+            alarmMp.setAudioAttributes(new android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            android.content.res.AssetFileDescriptor fd = getResources().openRawResourceFd(R.raw.siren);
+            alarmMp.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+            fd.close();
+            alarmMp.setLooping(true);
+            alarmMp.setVolume(1f, 1f);
+            alarmMp.prepare();
+            alarmMp.start();
+        } catch (Exception e) {
+            err = String.valueOf(e.getMessage());
+            // גיבוי: צליל של הנגן
+            try {
+                Uri u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                if (u == null) u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                alarmRt = RingtoneManager.getRingtone(this, u);
+                if (alarmRt != null) { alarmRt.setStreamType(AudioManager.STREAM_ALARM); alarmRt.play(); err = ""; }
+            } catch (Exception ignored) {}
+        }
+        try {
             Vibrator vb = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (vb != null) vb.vibrate(new long[]{0, 600, 400}, 0);
-            main.postDelayed(this::stopAlarm, 30000);
         } catch (Exception ignored) {}
+        final String msg = err.isEmpty() ? "🔊 האזעקה מצלצלת בנגן (עד דקה)" : "❌ האזעקה לא הצליחה: " + err;
+        io.execute(() -> { try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", new JSONObject().put("alarmMsg", msg).toString()); } catch (Exception ignored) {} });
+        main.removeCallbacks(alarmStop);
+        main.postDelayed(alarmStop, 60000);
     }
 
+    private final Runnable alarmStop = this::stopAlarm;
+
     private void stopAlarm() {
+        try { if (alarmMp != null) { alarmMp.stop(); alarmMp.release(); } } catch (Exception ignored) {}
+        alarmMp = null;
         try { if (alarmRt != null) alarmRt.stop(); } catch (Exception ignored) {}
         try {
             Vibrator vb = (Vibrator) getSystemService(VIBRATOR_SERVICE);
             if (vb != null) vb.cancel();
         } catch (Exception ignored) {}
+        io.execute(() -> { try { Fb.patch("d/" + Cfg.deviceId(this) + "/st", "{\"alarmMsg\":\"האזעקה כבויה\"}"); } catch (Exception ignored) {} });
     }
 
     /** האזנה חיה להגדרות שההורה משנה. */
@@ -502,6 +531,9 @@ public class GuardService extends AccessibilityService {
                 st.put("day", Cfg.today());
                 st.put("now", System.currentTimeMillis());
                 st.put("loc", Loc.allowed(this));
+                st.put("locBg", Loc.bgAllowed(this));
+                st.put("locOn", Loc.enabled(this));
+                st.put("cam", checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED);
                 JSONObject lc = Loc.last(this);
                 if (lc != null) Fb.patch("d/" + Cfg.deviceId(this) + "/loc", lc.toString());
                 st.put("alert", "");

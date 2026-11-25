@@ -16,6 +16,19 @@ final class Loc {
                 || c.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
+    /** האם מותר מיקום גם כשהאפליקציה ברקע ("לאפשר כל הזמן") */
+    static boolean bgAllowed(Context c) {
+        if (android.os.Build.VERSION.SDK_INT < 29) return allowed(c);
+        return c.checkSelfPermission("android.permission.ACCESS_BACKGROUND_LOCATION") == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static boolean enabled(Context c) {
+        try {
+            LocationManager lm = (LocationManager) c.getSystemService(Context.LOCATION_SERVICE);
+            return lm != null && (android.os.Build.VERSION.SDK_INT < 28 || lm.isLocationEnabled());
+        } catch (Exception e) { return false; }
+    }
+
     /** המיקום האחרון הידוע, או null. */
     static JSONObject last(Context c) {
         if (!allowed(c)) return null;
@@ -90,7 +103,8 @@ final class Loc {
                 if (fin[0]) return;
                 fin[0] = true; stopAll.run();
                 JSONObject old = last(c);
-                cb.done(old, old == null ? "הנגן לא הצליח למצוא מיקום (נסה ליד חלון / עם WiFi)" : "מיקום טרי לא נמצא – מוצג המיקום האחרון");
+                String why = !bgAllowed(c) ? " · חסרה הרשאת 'מיקום – לאפשר כל הזמן' (תפריט הורה בנגן ← 📍)" : "";
+                cb.done(old, (old == null ? "הנגן לא הצליח למצוא מיקום (נסה ליד חלון / עם WiFi)" : "מיקום טרי לא נמצא – מוצג המיקום האחרון") + why);
             }, 60000);
         });
     }

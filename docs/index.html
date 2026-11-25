@@ -277,6 +277,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
           <button class="y" onclick="alarmOn()">🔊 הפעל אזעקה</button>
           <button class="ghost" onclick="alarmOff()">הפסק</button>
         </div>
+        <div id="alarmMsg" style="color:#fde68a;margin-top:8px"></div>
       </div>
       <div class="card">
         <div class="row">
@@ -291,6 +292,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <h2>📸 צילום מהנגן</h2>
         <p class="muted">מצלם מהמצלמה הקדמית – לראות מי מחזיק בנגן. גם אוטומטית אחרי 3 ניסיונות קוד שגויים.</p>
         <button class="p" style="width:100%" onclick="takePhoto()">📸 צלם עכשיו</button>
+        <div id="camMsg" style="color:#fde68a;margin-top:8px"></div>
         <div id="photoBox" style="margin-top:10px"></div>
       </div>
     </div>
@@ -926,7 +928,12 @@ function sendBanner(){
 /* ---------- איתור ואבטחה ---------- */
 function renderSecure(){
   const lc=S.loc||{};
-  setTimeout(()=>{ const m=$("locMsg"); if(m) m.textContent=(S.st||{}).locMsg||""; },0);
+  setTimeout(()=>{ const st=S.st||{}, m=$("locMsg"); if(m){ let w=st.locMsg||"";
+      if(st.locOn===false) w = "⚠️ המיקום כבוי בנגן – בנגן: תפריט הורה ← 📍 להדליק מיקום. " + w;
+      else if(st.locBg===false) w = "⚠️ חסרה בנגן הרשאת 'מיקום – לאפשר כל הזמן'. בנגן: תפריט הורה ← ✅ לאשר הרשאות. " + w;
+      m.textContent = w; }
+    const a=$("alarmMsg"); if(a) a.textContent = st.alarmMsg||"";
+    const c=$("camMsg"); if(c) c.textContent = st.cam===false ? "⚠️ אין הרשאת מצלמה בנגן – תפריט הורה בנגן ← ✅ לאשר הרשאות" : (st.camMsg||""); },0);
   if(lc.lat!=null){
     $("locInfo").innerHTML = `מיקום אחרון: <b style="color:#fff">${(+lc.lat).toFixed(5)}, ${(+lc.lng).toFixed(5)}</b><br>דיוק ~${lc.acc||"?"} מ׳ · ${ago(lc.t)}`;
     $("mapBtn").href = `https://www.google.com/maps/search/?api=1&query=${lc.lat},${lc.lng}`;
