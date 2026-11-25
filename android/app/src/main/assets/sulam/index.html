@@ -90,21 +90,23 @@ main{padding:12px;max-width:620px;margin:auto}
 .kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
 .idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
-/* הסולם נשאר למעלה בגלילה */
-.stick{position:sticky;top:6px;z-index:15;transition:padding .25s}
-.stick.mini{background:rgba(36,22,100,.95);box-shadow:0 10px 30px #0008;padding:6px 10px!important;top:4px}
-.mini .stage{gap:10px;align-items:center}
-.mini .ladwrap{width:54px;min-width:0}
-.mini .kid.photo{width:36%}.mini .kid.photo.top{width:62%}.stick.mini{overflow:hidden}
-.mini .side{gap:5px;justify-content:center}
-.mini .score{display:flex;align-items:baseline;gap:6px;padding:0;background:none;border:0;text-align:start}
-.mini .score .n{font-size:30px}.mini .score .of{font-size:12px}
-.mini .grade,.mini .stars,.mini .stepl{display:none}
-.mini .bubble{font-size:12px;min-height:0;padding:5px 9px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;order:3}
-.mini .bubble:after{display:none}
-.mini .prog{height:8px;order:2}.mini .score{order:1}.mini .rescue{order:4;font-size:11px;padding:4px 6px;animation:none}
-.mini .ladwrap text,.mini .ladwrap circle{display:none}
-.mini .kid .alarm{font-size:13px;top:-12%;right:-30%}
+/* סולם קטן צף בצד ימין בזמן גלילה */
+.minil{position:fixed;top:8px;right:8px;width:92px;z-index:30;background:rgba(36,22,100,.96);border:1px solid #ffffff2e;border-radius:18px;padding:6px 6px 8px;box-shadow:0 10px 28px #000a;
+  opacity:0;transform:translateX(30px) scale(.7);transform-origin:top right;pointer-events:none;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.9,.3,1.2)}
+.minil.show{opacity:1;transform:none;pointer-events:auto}
+.minil .mn{text-align:center;font-weight:900;font-size:22px;line-height:1;background:linear-gradient(180deg,#fff,#fde68a);-webkit-background-clip:text;color:transparent}
+.minil .mn{margin-top:4px}.minil .mo{text-align:center;font-size:10px;color:var(--dim)}
+.minil .ml{position:relative;width:100%;aspect-ratio:80/230}
+.minil .ml svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.minil .mk{position:absolute;left:50%;width:30%;transform:translateX(-50%);transition:bottom .9s cubic-bezier(.5,1.6,.4,1)}
+.minil .mk img,.minil .mk svg{width:100%;display:block;position:static}
+.minil .mk.top{width:58%}
+.minil.hang .mk{animation:hang 1.4s infinite ease-in-out;transform-origin:50% 0}
+.minil.hang{border-color:#ef4444;box-shadow:0 0 0 2px #ef444488,0 10px 28px #000a}
+.minil .mp{height:6px;border-radius:9px;background:#ffffff1f;overflow:hidden;margin-top:6px}.minil .mp i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#fbbf24);transition:width .6s}
+.mbub{position:fixed;top:16px;right:110px;max-width:56vw;background:#fff;color:#2b1b6b;font-weight:800;font-size:14px;padding:8px 12px;border-radius:14px;z-index:31;box-shadow:0 6px 18px #0006;opacity:0;transform:translateX(10px);transition:.3s;pointer-events:none}
+.mbub.show{opacity:1;transform:none}
+.minil .mw{position:absolute;top:-4px;left:-4px;font-size:14px;display:none}.minil.hang .mw{display:block}
 /* טבלת היום */
 .cat{margin-bottom:12px}
 .cat h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:6px}
@@ -231,7 +233,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <main>
     <div id="viewing" class="viewing hide"></div>
     <div id="dadMsg"></div>
-    <div class="card stick" id="stageCard" style="padding:12px">
+    <div class="card" id="stageCard" style="padding:12px">
       <div class="stage">
         <div class="ladwrap" id="lad"></div>
         <div class="side">
@@ -374,6 +376,8 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <a data-v="stats" onclick="go('stats')"><i>📊</i>הישגים</a>
   <a data-v="set" onclick="go('set')"><i>⚙️</i>הגדרות</a>
 </nav>
+<div class="mbub" id="mBub"></div>
+<div class="minil" id="miniLad" onclick="scrollTo({top:0,behavior:'smooth'})"></div>
 <div id="modal"></div>
 <canvas id="fx"></canvas>
 <div class="toast" id="toast"></div>
@@ -604,6 +608,7 @@ function say(txt, cat){
 function praise(cat){
   const t = rnd(PRAISE[cat] || PRAISE.small);
   const b = $("bubble"); b.textContent = t; b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+  if($("miniLad").classList.contains("show")){ const m = $("mBub"); m.textContent = t; m.classList.add("show"); clearTimeout(m._t); m._t = setTimeout(()=>m.classList.remove("show"), 2800); }
   say(t, cat);
 }
 let AC = null;
@@ -729,6 +734,7 @@ function renderScore(anim){
     r.classList.remove("hide"); r.innerHTML = `🆘 השלב נשבר! צבור עוד <b>${need}</b> נקודות כדי להציל אותו!`;
   } else r.classList.add("hide");
   placeKid(st, anim);
+  renderMini(st);
   renderCoin();
   return st;
 }
@@ -1058,22 +1064,45 @@ function go(v){
   ["today","cal","kupa","stats","set","help"].forEach(x => $("v-"+x).classList.toggle("hide", x!==v));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.v===v));
   if(v==="today") renderToday(); if(v==="cal") renderCal(); if(v==="kupa") renderKupa(); if(v==="stats") renderStats(); if(v==="set") renderSet(); if(v==="help") renderHelp();
-  scrollTo(0,0);
+  scrollTo(0,0); miniScroll();
 }
 function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(); }
 window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
 
-/* ---------- סולם מוקטן בגלילה ---------- */
-addEventListener("scroll", () => {
-  const c = $("stageCard"); if(!c || CUR !== "today") return;
-  const y = scrollY;
-  if(y > 330 && !c.classList.contains("mini")) c.classList.add("mini");
-  else if(y < 100 && c.classList.contains("mini")) c.classList.remove("mini");
-}, {passive:true});
+/* ---------- סולם קטן צף ---------- */
+const MR = k => 178 - k*16;   // גובה שלב k בסולם הקטן
+function miniInit(){
+  let r = ""; for(let k=1;k<=STEPS;k++) r += `<line id="mr${k}" x1="18" y1="${MR(k)}" x2="62" y2="${MR(k)}" stroke="#d6a35c" stroke-width="4" stroke-linecap="round"/>`;
+  $("miniLad").innerHTML = `<div class="mw">⚠️</div>
+    <div class="ml"><svg viewBox="0 -40 80 230"><text x="40" y="4" font-size="16" text-anchor="middle">🏆</text>
+    <rect x="13" y="12" width="5" height="172" rx="2.5" fill="#d6a35c"/><rect x="62" y="12" width="5" height="172" rx="2.5" fill="#d6a35c"/>${r}</svg>
+    <div class="mk" id="mK"><img src="img/kid.png" onerror="this.replaceWith(kidSvgEl())" alt=""></div></div>
+    <div class="mn" id="mN">0</div><div class="mo" id="mO"></div><div class="mp"><i id="mP"></i></div>`;
+}
+function renderMini(st){
+  if(!$("mN")) return;
+  $("mN").textContent = st.total; $("mO").textContent = st.top ? "🏆 בפסגה!" : `מתוך ${st.target}`;
+  $("mP").style.width = st.pct + "%";
+  for(let k=1;k<=STEPS;k++){ const brk = st.brk.some(b=>stepFor(b.need)===k); const e=$("mr"+k);
+    e.setAttribute("stroke", brk ? "#ef4444" : k<=st.step ? "#fbbf24" : "#d6a35c"); e.setAttribute("stroke-dasharray", brk ? "6 5" : ""); }
+  const k = Math.max(0, st.step - (st.brk.length ? 1 : 0));
+  const feet = k===0 ? 184 : MR(k);
+  $("mK").style.bottom = ((190 - feet)/230*100) + "%";
+  const im = $("mK").querySelector("img");
+  if(im){ const want = st.top ? "img/kid_top.png" : "img/kid.png"; if(!im.src.endsWith(want)) im.src = want; }
+  $("mK").classList.toggle("top", st.top);
+  $("miniLad").classList.toggle("hang", st.brk.length > 0);
+}
+function miniScroll(){
+  const show = CUR==="today" && scrollY > 40;
+  $("miniLad").classList.toggle("show", show);
+}
+addEventListener("scroll", miniScroll, {passive:true});
 
 /* ======================= התחלה ======================= */
 new Image().src = "img/kid_top.png";
 $("lad").innerHTML = ladderSvg();
+miniInit();
 renderToday(); syncInfo();
 setTimeout(() => {
   const t = dk(new Date());
