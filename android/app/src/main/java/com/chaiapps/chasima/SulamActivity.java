@@ -98,6 +98,17 @@ public class SulamActivity extends Activity {
     }
 
     class Bridge {
+        /** 🔄 עדכון האפליקציה (גרסה רשמית מגיטהאב). ההודעות חוזרות לדף. */
+        @JavascriptInterface
+        public void update() {
+            Updater.run(SulamActivity.this, msg -> runOnUiThread(() -> {
+                try { web.evaluateJavascript("window.onUpd&&onUpd(" + JSONObject.quote(String.valueOf(msg)) + ")", null); } catch (Exception ignored) {}
+            }));
+        }
+
+        @JavascriptInterface
+        public String ver() { return BuildConfig.VERSION_NAME; }
+
         /** אייקון "הסולם שלי" במסך הבית של הנגן (הנגן מציג חלון אישור) */
         @JavascriptInterface
         public boolean pinIcon() {

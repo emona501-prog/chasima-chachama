@@ -383,6 +383,12 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <button class="ghost sm" onclick="playIntro(0)">▶️ לצפות עכשיו</button>
   </div>
   <div class="card">
+    <h2>🔄 עדכון האפליקציה</h2>
+    <p class="muted" id="verTxt"></p>
+    <button style="width:100%" onclick="doUpd()">🔄 בדוק ועדכן לגרסה האחרונה</button>
+    <p class="muted" id="updTxt" style="margin:8px 0 0"></p>
+  </div>
+  <div class="card">
     <h2>📲 אייקון במסך הבית</h2>
     <p class="muted">מוסיף את נחמן המלך 👑 למסך הבית של הנגן – לוחצים "הוסף" בחלון שקופץ.</p>
     <button class="y" style="width:100%" onclick="pinIcon()">👑 הוסף אייקון למסך הבית</button>
@@ -1190,6 +1196,7 @@ const EMOJIS = ["⭐","📖","📚","🙏","✨","💧","🚿","🪥","🛏️",
 let nEmo = "⭐";
 function renderSet(){
   $("voiceOn").checked = L.voice; $("sfxOn").checked = L.sfx;
+  try{ $("verTxt").textContent = "הגרסה שמותקנת: " + (NB && NB.ver ? NB.ver() : "הדגמה"); }catch(e){}
   $("introOpt").innerHTML = [["day","פעם ביום"],["always","בכל כניסה"],["off","כבוי"]].map(([k,n])=>`<span class="${introMode()===k?"on":""}" onclick="LS.set('introMode','${k}');renderSet()">${n}</span>`).join("");
   $("edList").innerHTML = CATS.map(c => {
     const its = items().filter(it=>it.c===c.id); if(!its.length) return "";
@@ -1209,6 +1216,8 @@ function renderSet(){
   try{ $("remT").value = NB ? NB.getRem() : (LS.get("rem")||""); }catch(e){}
   syncInfo();
 }
+function doUpd(){ if(!NB || !NB.update) return toast("העדכון עובד רק בנגן"); $("updTxt").textContent = "⏳ בודק…"; try{ NB.update(); }catch(e){ $("updTxt").textContent = "❌ לא הצלחתי"; } }
+window.onUpd = (m) => { const e = $("updTxt"); if(e) e.textContent = m; toast(m); };
 function pinIcon(){ let ok = false; try{ ok = NB && NB.pinIcon(); }catch(e){} toast(ok ? "👑 לחץ \"הוסף\" בחלון שקפץ" : "הנגן לא מאפשר – גרור את האייקון מרשימת האפליקציות"); }
 function saveRem(){ const v = $("remT").value; try{ NB ? NB.setRem(v) : LS.set("rem", v); }catch(e){} toast(v ? "⏰ תזכורת כל יום ב-"+v : "התזכורת בוטלה"); }
 function saveSet(){ D.set.at = Date.now(); save(); enqueue("PUT", "set", D.set); renderAll(); }
