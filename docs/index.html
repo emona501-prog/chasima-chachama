@@ -312,6 +312,12 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <div class="grid2"><button class="g" onclick="sulGift(1)">➕ הוספה</button><button class="r" onclick="sulGift(-1)">➖ הורדה</button></div>
         <div id="sulHist" style="margin-top:10px"></div>
       </div>
+      <div class="card">
+        <h2>💡 רעיונות והצעות שלו<span id="ideaBadge" class="badge hide"></span></h2>
+        <p class="muted">מה שהוא כותב ב"יש לי רעיון" באפליקציה. "העתקה" מעתיקה את כל הפתוחים – להדבקה אצל Claude.</p>
+        <button class="p sm" onclick="sulCopyIdeas()">📋 העתקת כל הרעיונות הפתוחים</button>
+        <div id="sulIdeas" style="margin-top:10px"></div>
+      </div>
       <div class="card"><h2>📊 שבועיים אחרונים</h2><div id="sulBars"></div></div>
       <div class="card">
         <h2>⚙️ ניקוד ופרסים</h2>
@@ -935,12 +941,14 @@ function tab(t){
 
 
 /* ---------- הסולם (סדר יום) ---------- */
-const SUL = {set:null, kupa:{}, msg:{}, sum:null, editing:false, busy:false};
+const SUL = {set:null, kupa:{}, msg:{}, sum:null, ideas:{}, editing:false, busy:false};
+const IDEA_K = {func:"✨ פונקציה חדשה", up:"🚀 שדרוג", change:"🔧 שינוי", sec:"📂 מדור חדש", other:"💬 אחר"};
 const SUL_QUICK = ["אתה אלוף! 🏆","אבא גאה בך ❤️","אין כמוך נסיך 👑","ראיתי שהתפללת בכוונה – אשריך! 🙏","קדימה, אתה יכול! 💪","אני אוהב אותך 💙"];
 async function pollSulam(force){
   if(SUL.busy) return; SUL.busy = true;
   try{
-    const [set, kupa, msg, sum] = await Promise.all(["set","kupa","msg","sum"].map(n=>fb("GET", `d/${ID}/s/${n}`)));
+    const [set, kupa, msg, sum, ideas] = await Promise.all(["set","kupa","msg","sum","ideas"].map(n=>fb("GET", `d/${ID}/s/${n}`)));
+    SUL.ideas = ideas||{};
     if(!SUL.editing || force) SUL.set = set;
     SUL.kupa = kupa||{}; SUL.msg = msg||{}; SUL.sum = sum;
     renderSulam(force);
@@ -959,7 +967,9 @@ function sulPts(it, v){
 function renderSulam(force){
   const name = (S.cfg||{}).name || "הילד", sum = SUL.sum, set = SUL.set;
   const pend = Object.entries(SUL.kupa).filter(([k,x])=>x.k==="redeem" && x.st==="wait");
-  $("sulBadge").textContent = pend.length; $("sulBadge").classList.toggle("hide", !pend.length);
+  const newIdeas = Object.values(SUL.ideas).filter(x=>x.st==="new").length;
+  $("sulBadge").textContent = pend.length + newIdeas; $("sulBadge").classList.toggle("hide", !(pend.length + newIdeas));
+  $("ideaBadge").textContent = newIdeas; $("ideaBadge").classList.toggle("hide", !newIdeas);
   if(!$("t-sulam") || $("t-sulam").classList.contains("hide")) return;
   // היום
   if(!sum || !set){
@@ -978,6 +988,14 @@ function renderSulam(force){
   // בקשות
   $("sulReqs").innerHTML = pend.length ? pend.map(([k,x])=>`<div class="app"><div style="font-size:30px">${x.e||"🎁"}</div><div class="n"><b>${esc(x.n)}</b><span class="muted">${x.pts} נקודות · ${ago(x.t)}</span></div>
       <button class="g sm" onclick="sulAnswer('${k}',1)">✅ אשר</button><button class="r sm" onclick="sulAnswer('${k}',0)">✖️</button></div>`).join("") : `<p class="muted">אין בקשות שמחכות</p>`;
+  // רעיונות
+  const ik = Object.keys(SUL.ideas).sort().reverse();
+  $("sulIdeas").innerHTML = ik.length ? ik.map(k=>{ const x=SUL.ideas[k];
+    const st = x.st==="done" ? "✅ בוצע" : x.st==="seen" ? "👀 ראיתי" : "🆕 חדש";
+    return `<div class="day"><div style="white-space:pre-wrap">${esc(x.txt)}</div>
+      <div class="muted" style="margin:4px 0">${IDEA_K[x.kind]||"💬"} · ${new Date(x.t||0).toLocaleDateString("he-IL")} · ${st}</div>
+      <div class="row">${x.st==="new"?`<button class="ghost sm" onclick="sulIdea('${k}','seen')">👀 ראיתי</button>`:""}${x.st!=="done"?`<button class="g sm" onclick="sulIdea('${k}','done')">✅ בוצע</button>`:""}<button class="r sm" onclick="sulIdea('${k}','del')">🗑️</button></div></div>`; }).join("")
+    : `<p class="muted">עוד אין רעיונות</p>`;
   // פרגונים
   $("sulQuick").innerHTML = SUL_QUICK.map(q=>`<span class="chip" onclick="$('sulMsg').value=this.textContent">${esc(q)}</span>`).join("");
   const mk = Object.keys(SUL.msg).sort().slice(-4).reverse();
@@ -1022,6 +1040,24 @@ async function sulSaveSet(){
   SUL.set.target = Math.max(10, +$("sTarget").value||150); SUL.set.bonus = Math.max(0, +$("sBonus").value||0); SUL.set.rate = Math.max(1, +$("sRate").value||100);
   SUL.set.at = Date.now();
   try{ await fb("PUT", `d/${ID}/s/set`, SUL.set); SUL.editing=false; toast("✅ נשמר – יגיע לנגן תוך כחצי דקה"); }catch(e){ toast("❌ "+e.message); }
+}
+async function sulIdea(k, st){
+  try{
+    if(st==="del"){ await fb("DELETE", `d/${ID}/s/ideas/${k}`); delete SUL.ideas[k]; }
+    else { await fb("PATCH", `d/${ID}/s/ideas/${k}`, {st}); SUL.ideas[k].st = st; toast(st==="done"?"✅ סומן כבוצע – הוא יראה את זה":"👀 סומן"); }
+    renderSulam();
+  }catch(e){ toast("❌ "+e.message); }
+}
+function sulCopyIdeas(){
+  const name = (S.cfg||{}).name || "הבן שלי";
+  const open = Object.keys(SUL.ideas).sort().map(k=>SUL.ideas[k]).filter(x=>x.st!=="done");
+  if(!open.length) return toast("אין רעיונות פתוחים");
+  const txt = `רעיונות ש${name} שלח לשיפור אפליקציית "הסולם שלי" (חסימה חכמה, ריפו chasima-chachama):\n\n` +
+    open.map((x,i)=>`${i+1}. [${(IDEA_K[x.kind]||"אחר").replace(/^\S+ /,"")}] ${x.txt}`).join("\n");
+  const show = () => { let t = $("ideaCopy"); if(!t){ t = document.createElement("textarea"); t.id = "ideaCopy"; t.rows = 6; t.style.marginTop = "8px"; $("sulIdeas").before(t); }
+    t.value = txt; t.focus(); t.select(); try{ if(document.execCommand("copy")) return toast("📋 הועתק! עכשיו הדבק אצל Claude"); }catch(e){} toast("סמן והעתק את הטקסט"); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(()=>toast("📋 הועתק! עכשיו הדבק אצל Claude")).catch(show);
+  else show();
 }
 async function sulAnswer(k, ok){
   const x = SUL.kupa[k]; if(!x) return;

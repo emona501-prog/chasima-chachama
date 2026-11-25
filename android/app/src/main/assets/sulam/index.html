@@ -76,6 +76,20 @@ main{padding:12px;max-width:620px;margin:auto}
 .prog{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22c55e,#fbbf24);border-radius:99px;transition:width .8s}
 
+.helpb{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:18px;padding:6px 10px;font-size:20px;line-height:1.1}
+.helpb small{font-size:10px;font-weight:700}
+.guide h3{margin:16px 0 6px;font-size:17px;color:#fde68a}
+.guide p,.guide li{font-size:15px;line-height:1.6}
+.guide ol,.guide ul{padding-inline-start:20px;margin:6px 0}
+.guide table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+.guide td{padding:7px 6px;border-bottom:1px solid var(--line)}
+.guide td:last-child{text-align:left;font-weight:800;color:#fde68a;white-space:nowrap}
+.sign{text-align:center;font-weight:800;font-size:16px;margin-top:14px}
+.kinds{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.kinds span{padding:8px 11px;border-radius:12px;background:#ffffff14;border:1px solid var(--line);font-size:13px;font-weight:700}
+.kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
+.idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
+.idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
 /* הסולם נשאר למעלה בגלילה */
 .stick{position:sticky;top:6px;z-index:15;transition:padding .25s}
 .stick.mini{background:rgba(36,22,100,.94);box-shadow:0 10px 30px #0008}
@@ -206,6 +220,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
       <span id="gDate"></span>
       <div class="chipz" id="chips"></div>
     </div>
+    <div class="helpb" onclick="go('help')">📖<small>מדריך</small></div>
     <div class="coin" onclick="go('kupa')"><span id="coinN">0</span><small>בקופה ⭐</small></div>
   </div>
   <main>
@@ -232,6 +247,54 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <button class="y" style="width:100%;font-size:17px;padding:14px" onclick="daySummary()">📋 סיכום היום ושליחה לאבא</button>
   </main>
 </div>
+
+
+<div id="v-help" class="hide"><main>
+  <div class="card guide">
+    <h2>📖 המדריך שלי</h2>
+    <h3>נחמן, זה בשבילך</h3>
+    <p>בנינו לך אפליקציה שהיא שלך בלבד. כל דבר טוב שאתה עושה מעלה אותך שלב בסולם, וכל נקודה נכנסת לקופה ושווה פרסים וכסף אמיתי.</p>
+    <p>זה לא מבחן ולא עונש. זה משחק שעוזר לך לראות כמה אתה מצליח – ולאבא לראות ולפרגן לך על כל צעד.</p>
+    <h3>איך מסמנים</h3>
+    <ul>
+      <li><b>תפילה</b> – בוחרים: לא התפללתי / התפללתי / בכוונה 🔥. בכוונה שווה כמעט כפול.</li>
+      <li><b>לימוד</b> – לוחצים +1 או +5 לפי הדקות (או לוחצים על המספר ומקלידים).</li>
+      <li><b>עשיתי / לא עשיתי</b> – לוחצים על השורה ומופיע ✓.</li>
+      <li><b>שורות אדומות</b> מורידות נקודות – מסמנים אותן בכנות.</li>
+    </ul>
+    <p>אפשר לסמן את היום ואת אתמול. בסוף היום – "סיכום היום ושליחה לאבא".</p>
+    <h3>המשחק של הסולם</h3>
+    <ol>
+      <li><b>מטפסים</b> – כל 15 נקודות = שלב, והשלבים שעברת נצבעים בזהב.</li>
+      <li><b>שלב נשבר</b> – כשמסמנים שורה אדומה, הדמות נתלית ומתנדנדת.</li>
+      <li><b>מצילים</b> – עוד כמה נקודות והשלב מתתקן. ירידה לצורך עלייה!</li>
+      <li><b>ראש הסולם</b> – ביעד היומי אתה בפסגה, מקבל בונוס, ואבא מקבל הודעה.</li>
+    </ol>
+    <h3>הקופה והפרסים</h3>
+    <p>כל נקודה נכנסת לקופה. כשיש מספיק – לוחצים "אני רוצה!", הבקשה מגיעה לאבא, וכשהוא מאשר מקבלים את הפרס באמת. אפשר גם לחסוך לפרס גדול.</p>
+    <h3>הכללים שלנו</h3>
+    <ol>
+      <li><b>מסמנים רק אמת.</b> הסולם שווה משהו רק כשהוא אמיתי. אני סומך עליך.</li>
+      <li><b>גם האדום בכנות.</b> מי שמסמן בכנות הוא גיבור אמיתי – וזה משמח אותי יותר מהנקודות.</li>
+      <li><b>יום חלש זה לא סוף העולם.</b> מחר מתחילים מחדש. אין שום ייאוש בעולם כלל!</li>
+      <li><b>יש לך רעיון?</b> כתוב אותו בתיבה למטה 👇</li>
+    </ol>
+    <h3>כמה שווה כל דבר</h3>
+    <table id="ptsTable"></table>
+    <h3>מאבא, מכל הלב</h3>
+    <p>נחמן, אתה לא צריך סולם כדי שאני אוהב אותך – אני אוהב אותך תמיד, בכל שלב. הסולם הוא רק דרך לראות יחד כמה אתה עולה.</p>
+    <p>אני מחכה לראות אותך בפסגה. אין כמוך, נסיך! ❤️</p>
+    <div class="sign">– אבא</div>
+  </div>
+  <div class="card" id="ideaBox">
+    <h2>💡 יש לי רעיון!</h2>
+    <p class="muted">רוצה פונקציה חדשה, שדרוג, שינוי או מדור חדש? כתוב כאן – זה נשמר בתיבה מיוחדת אצל אבא.</p>
+    <div class="kinds" id="ideaKinds"></div>
+    <textarea class="inp" id="ideaTxt" rows="4" placeholder="למשל: שיהיה מדור של שמירת הלשון, או שהדמות תרקוד כשמגיעים לפסגה…"></textarea>
+    <button class="y" style="width:100%" onclick="sendIdea()">📤 שליחה לאבא</button>
+    <div id="ideaList" style="margin-top:12px"></div>
+  </div>
+</main></div>
 
 <div id="v-cal" class="hide"><main>
   <div class="card">
@@ -260,6 +323,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
 </main></div>
 
 <div id="v-set" class="hide"><main>
+  <div class="card"><div class="row"><button class="ghost" style="flex:1" onclick="go('help')">📖 המדריך שלי</button><button class="y" style="flex:1" onclick="go('help');setTimeout(()=>$('ideaBox').scrollIntoView({behavior:'smooth'}),100)">💡 יש לי רעיון</button></div></div>
   <div class="card">
     <h2>🔊 קול ועידוד</h2>
     <div class="row" style="margin-bottom:8px"><div style="flex:1">הקראת עידודים בקול</div><label class="sw"><input type="checkbox" id="voiceOn" onchange="setLocal('voice',this.checked)"><i></i></label></div>
@@ -377,7 +441,7 @@ function load(){
   let o = {};
   try{ o = JSON.parse(LS.get("sulam")||"{}"); }catch(e){}
   if(!o.set) o.set = DEF_SET();
-  o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {};
+  o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {}; o.ideas = o.ideas || {};
   return o;
 }
 function save(){ try{ LS.set("sulam", JSON.stringify(D)); }catch(e){} }
@@ -432,6 +496,9 @@ async function pull(first){
     for(const k in kupa) D.kupa[k] = kupa[k];
     for(const k in D.kupa) if(!kupa[k] && !Q.some(q=>q[1]==="kupa/"+k)) delete D.kupa[k];
     if(JSON.stringify(D.kupa)!==before){ notifyKupa(before); renderKupa(); renderCoin(); }
+    const ideas = await fb("GET","ideas") || {};
+    for(const k in ideas) D.ideas[k] = ideas[k];
+    if(CUR==="help") renderHelp();
     const msg = await fb("GET","msg?orderBy=%22%24key%22&limitToLast=20") || {};
     D.msg = msg; showDadMsg();
     if(first){
@@ -918,6 +985,35 @@ function saveDad(){
   saveSet(); DAD = false; renderSet(); toast("✅ נשמר");
 }
 
+
+/* ======================= מדריך ורעיונות ======================= */
+const KINDS = [["func","✨ פונקציה חדשה"],["up","🚀 שדרוג"],["change","🔧 שינוי"],["sec","📂 מדור חדש"],["other","💬 אחר"]];
+let ideaKind = "func";
+function renderHelp(){
+  const T = Math.max(10,+D.set.target||150);
+  $("v-help").querySelector("ol li b").parentElement.innerHTML = `<b>מטפסים</b> – כל ${Math.round(T/STEPS)} נקודות = שלב, והשלבים שעברת נצבעים בזהב.`;
+  const rows = items().filter(it=>!it.hid).map(it => {
+    const v = it.t==="ch" ? `${it.o[1].p} · בכוונה ${it.o[2].p}` : it.t==="min" ? `${it.p} לדקה` : it.t==="neg" ? `−${it.p}` : `${it.p}`;
+    return `<tr><td>${it.e} ${esc(it.n)}</td><td><bdi>${v}</bdi></td></tr>`;
+  });
+  rows.push(`<tr><td>🏆 ראש הסולם (${T})</td><td>בונוס ${+D.set.bonus||0}</td></tr>`);
+  $("ptsTable").innerHTML = rows.join("");
+  $("ideaKinds").innerHTML = KINDS.map(([k,n])=>`<span class="${k===ideaKind?"on":""}" onclick="ideaKind='${k}';renderHelp()">${n}</span>`).join("");
+  const ks = Object.keys(D.ideas||{}).sort().reverse();
+  $("ideaList").innerHTML = ks.length ? `<div class="muted" style="margin-bottom:6px">הרעיונות ששלחתי:</div>` + ks.map(k => {
+    const x = D.ideas[k], kn = (KINDS.find(a=>a[0]===x.kind)||KINDS[4])[1];
+    const st = x.st==="done" ? "✅ אבא ביצע!" : x.st==="seen" ? "👀 אבא ראה" : "📤 נשלח";
+    return `<div class="idea">${esc(x.txt)}<small>${kn} · ${new Date(x.t).toLocaleDateString("he-IL")} · ${st}${x.re?" · 💬 "+esc(x.re):""}</small></div>`;
+  }).join("") : "";
+}
+function sendIdea(){
+  const t = $("ideaTxt").value.trim(); if(!t) return toast("כתוב את הרעיון שלך");
+  const k = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  const x = {txt:t, kind:ideaKind, t:Date.now(), st:"new"};
+  D.ideas = D.ideas || {}; D.ideas[k] = x; save(); enqueue("PUT", "ideas/"+k, x);
+  $("ideaTxt").value = ""; renderHelp(); sparkle(); toast("💡 הרעיון נשלח לאבא! תודה!"); say("רעיון מעולה! שלחתי לאבא", "");
+}
+
 /* ======================= חלונות ואפקטים ======================= */
 let modalCb = null, MQ = [];
 function showModal(e, title, html, btn, cls, cb){
@@ -954,13 +1050,13 @@ function sparkle(){ const r = $("lad").getBoundingClientRect(); burst(28, ()=>({
 let CUR = "today";
 function go(v){
   CUR = v;
-  ["today","cal","kupa","stats","set"].forEach(x => $("v-"+x).classList.toggle("hide", x!==v));
+  ["today","cal","kupa","stats","set","help"].forEach(x => $("v-"+x).classList.toggle("hide", x!==v));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.v===v));
-  if(v==="today") renderToday(); if(v==="cal") renderCal(); if(v==="kupa") renderKupa(); if(v==="stats") renderStats(); if(v==="set") renderSet();
+  if(v==="today") renderToday(); if(v==="cal") renderCal(); if(v==="kupa") renderKupa(); if(v==="stats") renderStats(); if(v==="set") renderSet(); if(v==="help") renderHelp();
   scrollTo(0,0);
 }
 function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(); }
-window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
+window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
 
 /* ---------- סולם מוקטן בגלילה ---------- */
 addEventListener("scroll", () => {
