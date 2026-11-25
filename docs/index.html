@@ -1030,7 +1030,7 @@ function renderSulam(force){
   // פרגונים
   $("sulQuick").innerHTML = SUL_QUICK.map(q=>`<span class="chip" onclick="$('sulMsg').value=this.textContent">${esc(q)}</span>`).join("");
   const mk = Object.keys(SUL.msg).sort().slice(-4).reverse();
-  $("sulMsgs").innerHTML = mk.map(k=>{ const m=SUL.msg[k]; return `<div class="muted" style="padding:4px 0">${m.deal?"🎯":"💌"} ${esc(m.txt)} · ${ago(m.t)} ${m.seen?"✓✓ נקרא":"✓"}</div>`; }).join("");
+  $("sulMsgs").innerHTML = mk.map(k=>{ const m=SUL.msg[k]; return `<div class="muted" style="padding:4px 0">${m.deal?"🎯":"💌"} ${esc(m.txt)} · ${ago(m.t)} ${m.love?"❤️ קיבל באהבה":m.seen?"✓✓ נקרא":"✓"}</div>`; }).join("");
   // קופה
   const rate = Math.max(1, +((set||{}).rate)||100), bal = (sum||{}).bal||0;
   $("sulBal").innerHTML = `${bal.toLocaleString("he-IL")} ⭐ <span class="muted" style="font-size:15px">≈ ${(bal/rate).toLocaleString("he-IL",{maximumFractionDigits:1})} ₪</span>`;

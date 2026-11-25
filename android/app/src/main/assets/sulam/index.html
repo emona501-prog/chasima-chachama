@@ -90,6 +90,15 @@ main{padding:12px;max-width:620px;margin:auto}
 .kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
 .idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
+/* תיבת אבא */
+.chip.box{background:linear-gradient(135deg,#f472b655,#ec489933);border-color:#f472b688;color:#fce7f3;cursor:pointer}
+.dad.tap{cursor:pointer;transition:transform .15s,opacity .5s,max-height .6s,margin .6s;max-height:400px}
+.dad.tap:active{transform:scale(.97)}
+.dad.bye{opacity:0;transform:scale(.6) translateY(-30px);max-height:0;margin:0;overflow:hidden}
+.dad .hint{display:block;font-size:11px;color:#db2777;margin-top:4px;font-weight:700}
+.dad .hearts{letter-spacing:2px;font-size:13px}
+.boxl .dad{margin-bottom:14px}
+.boxl .dad .say small{display:block;color:#6b7280;font-size:11px;margin-top:4px;font-weight:600}
 /* סרטון פתיחה */
 .intro{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .5s}
 .intro video{width:100%;height:100%;object-fit:cover}
@@ -332,6 +341,10 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   </div>
 </main></div>
 
+<div id="v-box" class="hide"><main>
+  <div class="card"><h2>💌 התיבה של אבא</h2><p class="muted">כל מילה טובה שאבא שלח לך – שמורה כאן לתמיד ❤️</p></div>
+  <div class="boxl" id="boxList"></div>
+</main></div>
 <div id="v-cal" class="hide"><main>
   <div class="card">
     <div class="calh">
@@ -495,7 +508,7 @@ function load(){
   let o = {};
   try{ o = JSON.parse(LS.get("sulam")||"{}"); }catch(e){}
   if(!o.set) o.set = DEF_SET();
-  o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {}; o.ideas = o.ideas || {};
+  o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {}; o.ideas = o.ideas || {}; o.box = o.box || {}; o.arch = o.arch || {};
   return o;
 }
 function save(){ try{ LS.set("sulam", JSON.stringify(D)); }catch(e){} }
@@ -758,6 +771,8 @@ function renderHeader(){
   let c = "";
   if(h.par) c += `<span class="chip p">📜 פרשת ${esc(h.par)}</span>`;
   for(const x of h.hol.slice(0,2)) c += `<span class="chip h">🎉 ${esc(x)}</span>`;
+  const nb = Object.keys(D.box||{}).length;
+  if(nb) c += `<span class="chip box" onclick="go('box')">💌 תיבת אבא · ${nb}</span>`;
   $("chips").innerHTML = c;
   const v = $("viewing");
   if(VIEW !== dk(new Date())){
@@ -1004,7 +1019,12 @@ function showDadMsg(){
   const seen = seenMsgs();
   const last = ks.at(-1), m = D.msg[last];
   const fresh = ks.filter(k=>!seen[k]);
-  $("dadMsg").innerHTML = dadSay(esc(m.txt), m.deal ? `<div class="row"><button class="y sm" onclick="dealGo('${last}')">🎯 ${esc(m.deal.btn||"יאללה, בוא נתכנן!")}</button></div>` : "");
+  // כל ההודעות נשמרות בתיבה של אבא לתמיד
+  let ch = false; for(const k of ks) if(!D.box[k]){ D.box[k] = {txt: D.msg[k].txt, t: D.msg[k].t, deal: D.msg[k].deal||null}; ch = true; }
+  if(ch){ save(); renderHeader(); }
+  const show = D.arch[ks.at(-1)] ? null : ks.at(-1);
+  if(!show) $("dadMsg").innerHTML = "";
+  else { const sm = D.msg[show]; $("dadMsg").innerHTML = `<div class="dad tap" id="dadCard" onclick="loveTap(event,'${show}')">${dadAv()}<div class="say"><b>אבא</b>${esc(sm.txt)}${sm.deal ? `<div class="row"><button class="y sm" onclick="event.stopPropagation();dealGo('${show}')">🎯 ${esc(sm.deal.btn||"יאללה, בוא נתכנן!")}</button></div>` : ""}<span class="hint">לחץ עליי ❤️ <span class="hearts" id="loveN"></span></span></div></div>`; }
   if(fresh.length){
     const k = fresh.at(-1), mm = D.msg[k];
     for(const x of fresh) seen[x] = 1; LS.set("seen", JSON.stringify(seen));
@@ -1015,6 +1035,36 @@ function showDadMsg(){
     for(const x of fresh) enqueue("PATCH", "msg/"+x, {seen: Date.now()});
   }
 }
+/* ---------- לבבות: 5 לחיצות על ההודעה – והיא עוברת לתיבה של אבא ---------- */
+let loveK = null, loveC = 0;
+function hearts(x, y, n, big){
+  const H = ["❤️","💖","💗","💛","💕","💙"];
+  burst(n, () => ({x, y, vx:(Math.random()-.5)*(big?16:8), vy:-Math.random()*(big?14:9)-3, heart: rnd(H), s: big?7+Math.random()*6:5+Math.random()*3, life: 80+Math.random()*50}));
+}
+function loveTap(ev, k){
+  if(loveK !== k){ loveK = k; loveC = 0; }
+  loveC++;
+  const x = ev.clientX || innerWidth/2, y = ev.clientY || 200;
+  hearts(x, y, 10 + loveC*4);
+  vib(30); tone([[700+loveC*90,.12]]);
+  $("loveN").textContent = "❤️".repeat(loveC) + "🤍".repeat(Math.max(0,5-loveC));
+  if(loveC >= 5){
+    hearts(innerWidth/2, y, 120, true);
+    D.arch[k] = Date.now(); save();
+    enqueue("PATCH", "msg/"+k, {love: Date.now()});
+    say("גם אני אוהב אותך!", "");
+    const c = $("dadCard"); if(c) c.classList.add("bye");
+    setTimeout(()=>{ showDadMsg(); toast("💌 נשמר בתיבה של אבא"); }, 700);
+    loveK = null; loveC = 0;
+  }
+}
+function renderBox(){
+  const ks = Object.keys(D.box||{}).sort().reverse();
+  $("boxList").innerHTML = ks.length ? ks.map(k => { const m = D.box[k];
+    return `<div class="dad" onclick="hearts(event.clientX,event.clientY,14)">${dadAv()}<div class="say"><b>אבא</b>${esc(m.txt)}<small>${m.t ? heb(new Date(m.t)).s + " · " + new Date(m.t).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : ""}${D.arch[k] ? " · ❤️" : ""}</small>${m.deal ? `<div class="row"><button class="y sm" onclick="event.stopPropagation();dealGoBox('${k}')">🎯 לתכנן את ההצעה</button></div>` : ""}</div></div>`; }).join("")
+    : `<p class="muted" style="text-align:center">עוד אין הודעות מאבא</p>`;
+}
+function dealGoBox(k){ const m = D.box[k]; if(!m || !m.deal) return; D.msg[k] = D.msg[k] || m; dealGo(k); }
 function dealGo(k){
   const m = (D.msg||{})[k]; if(!m || !m.deal) return;
   const d = m.deal, pre = {k: d.k || "teh"};
@@ -1262,9 +1312,9 @@ function burst(n, opts){
 function fxLoop(){
   cx.clearRect(0,0,cv.width,cv.height);
   parts = parts.filter(p => p.life-- > 0);
-  for(const p of parts){ p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+  for(const p of parts){ p.vy += p.heart ? .08 : .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
     cx.save(); cx.translate(p.x,p.y); cx.rotate(p.r); cx.fillStyle = p.c; cx.globalAlpha = Math.min(1, p.life/40);
-    if(p.star){ cx.font = p.s*3+"px serif"; cx.fillText("⭐",0,0); } else cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2); cx.restore(); }
+    if(p.heart){ cx.font = p.s*3+"px serif"; cx.fillText(p.heart,0,0); } else if(p.star){ cx.font = p.s*3+"px serif"; cx.fillText("⭐",0,0); } else cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2); cx.restore(); }
   if(parts.length) requestAnimationFrame(fxLoop); else { fxOn = false; cx.clearRect(0,0,cv.width,cv.height); }
 }
 function celebrate(){ burst(160); setTimeout(()=>burst(90, ()=>({x: Math.random()*innerWidth, y: -10, vy: Math.random()*3})), 400); }
@@ -1274,13 +1324,13 @@ function sparkle(){ const r = $("lad").getBoundingClientRect(); burst(28, ()=>({
 let CUR = "today";
 function go(v){
   CUR = v;
-  ["today","cal","kupa","stats","set","help"].forEach(x => $("v-"+x).classList.toggle("hide", x!==v));
+  ["today","cal","kupa","stats","set","help","box"].forEach(x => $("v-"+x).classList.toggle("hide", x!==v));
   document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.dataset.v===v));
-  if(v==="today") renderToday(); if(v==="cal") renderCal(); if(v==="kupa") renderKupa(); if(v==="stats") renderStats(); if(v==="set") renderSet(); if(v==="help") renderHelp();
+  if(v==="today") renderToday(); if(v==="cal") renderCal(); if(v==="kupa") renderKupa(); if(v==="stats") renderStats(); if(v==="set") renderSet(); if(v==="help") renderHelp(); if(v==="box") renderBox();
   scrollTo(0,0); miniScroll();
 }
 function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(); }
-window.onBack = () => { if(!$("intro").classList.contains("hide")){ introEnd(); return true; } if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
+window.onBack = () => { if(!$("intro").classList.contains("hide")){ introEnd(); return true; } if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR==="box"){ go("today"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
 
 /* ---------- סולם קטן צף ---------- */
 const MR = k => 178 - k*16;   // גובה שלב k בסולם הקטן
