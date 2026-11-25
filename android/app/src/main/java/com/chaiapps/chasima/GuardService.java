@@ -130,7 +130,13 @@ public class GuardService extends AccessibilityService {
             StringBuilder t = new StringBuilder(currentCls);
             try { for (CharSequence cs : e.getText()) t.append(' ').append(cs); } catch (Exception ignored) {}
             if (e.getContentDescription() != null) t.append(' ').append(e.getContentDescription());
-            if (Rules.isBtScreen(t.toString())) currentCls = currentCls + "|bt";
+            // בלוטות': מסך בלוטות' פותח "חלון בלוטות'" של 4 דקות – כל מסכי ההתאמה/החיבור בתוכו מותרים,
+            // חוץ מהמסך הראשי של ההגדרות
+            long nowBt = System.currentTimeMillis();
+            boolean home = Rules.isSettingsHome(currentCls, t.toString());
+            if (Rules.isBtScreen(t.toString())) { btUntil = nowBt + 4 * 60000L; currentCls = currentCls + "|bt"; }
+            else if (!home && nowBt < btUntil) { btUntil = nowBt + 4 * 60000L; currentCls = currentCls + "|bt"; }
+            else if (home) btUntil = 0;
         }
         // גילוי האפליקציה המוסתרת: 10 לחיצות רצופות על ההגדרות
         if (changed && pkg.equals(Rules.SETTINGS)) {
@@ -362,6 +368,7 @@ public class GuardService extends AccessibilityService {
     }
 
     private int sulN = 0;
+    private long btUntil = 0;
 
     /** 🆕 יש גרסה חדשה בגיטהאב? – התראה שלחיצה עליה מעדכנת מיד (פעם אחת לכל גרסה). */
     private void updTick() {

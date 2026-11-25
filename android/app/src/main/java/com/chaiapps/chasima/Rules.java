@@ -143,7 +143,17 @@ final class Rules {
     static boolean isBtScreen(String t) {
         String s = t.toLowerCase(java.util.Locale.US);
         return s.contains("bluetooth") || s.contains("בלוטות") || s.contains("connecteddevice")
-                || s.contains("מכשירים מחוברים") || s.contains("connected devices") || s.contains("pairing");
+                || s.contains("מכשירים מחוברים") || s.contains("connected devices") || s.contains("pair")
+                || s.contains("התאמ") || s.contains("התאם") || s.contains("מכשירים זמינים") || s.contains("available devices")
+                || s.contains("מכשיר חדש") || s.contains("new device") || s.contains("previously connected") || s.contains("שחוברו בעבר");
+    }
+
+    /** המסך הראשי של ההגדרות (משם אפשר להגיע לכל דבר) */
+    static boolean isSettingsHome(String cls, String t) {
+        String c = cls == null ? "" : cls;
+        String s = t == null ? "" : t.toLowerCase(java.util.Locale.US);
+        return c.contains("SettingsHomepage") || c.equals("com.android.settings.Settings") || c.endsWith(".homepage.SettingsHomepageActivity")
+                || s.contains("חיפוש בהגדרות") || s.contains("search settings");
     }
 
     static boolean inWindow(JSONObject sched, long now) {
