@@ -90,6 +90,11 @@ main{padding:12px;max-width:620px;margin:auto}
 .kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
 .idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
+/* סרטון פתיחה */
+.intro{position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .5s}
+.intro video{width:100%;height:100%;object-fit:cover}
+.intro.out{opacity:0;pointer-events:none}
+.intro .skip{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;background:rgba(0,0,0,.55);border:1px solid #ffffff55;border-radius:99px;padding:9px 16px;font-size:14px}
 /* ברסלב PRO */
 .bp h3 img{width:22px;height:22px;border-radius:6px}
 .bpg{display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;background:rgba(0,0,0,.18);margin-bottom:7px;border:1px solid transparent}
@@ -360,6 +365,9 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <div class="row" style="margin-bottom:8px"><div style="flex:1">הקראת עידודים בקול</div><label class="sw"><input type="checkbox" id="voiceOn" onchange="setLocal('voice',this.checked)"><i></i></label></div>
     <div class="row"><div style="flex:1">צלילים</div><label class="sw"><input type="checkbox" id="sfxOn" onchange="setLocal('sfx',this.checked)"><i></i></label></div>
     <button class="ghost sm" style="margin-top:10px" onclick="praise('big')">▶️ נסה עידוד</button>
+    <div style="margin-top:12px">🎬 סרטון פתיחה:</div>
+    <div class="kinds" id="introOpt" style="margin-top:6px"></div>
+    <button class="ghost sm" onclick="playIntro(0)">▶️ לצפות עכשיו</button>
   </div>
   <div class="card">
     <h2>⏰ תזכורת יומית</h2>
@@ -406,6 +414,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <a data-v="stats" onclick="go('stats')"><i>📊</i>הישגים</a>
   <a data-v="set" onclick="go('set')"><i>⚙️</i>הגדרות</a>
 </nav>
+<div class="intro hide" id="intro" onclick="introEnd()"><video id="introV" playsinline preload="auto" src="intro.mp4"></video><button class="skip" onclick="event.stopPropagation();introEnd()">דלג ⏭</button></div>
 <div class="mbub" id="mBub"></div>
 <div class="minil" id="miniLad" onclick="scrollTo({top:0,behavior:'smooth'})"></div>
 <div id="modal"></div>
@@ -829,7 +838,8 @@ function setVal(id, val, srcEl){
   let anim = null;
   if(newBrk){ anim = "hang"; SFX.down(); vib(400); praise("brk"); }
   else if(fixed){ anim = "joy"; SFX.fix(); praise("fix"); sparkle(); }
-  else if(st.top && !before.top){ anim = "joy"; SFX.top(); vib(200); celebrate(); praise("top");
+  else if(st.top && !before.top){ anim = "joy"; vib(200);
+    playIntro(6.6, () => { SFX.top(); celebrate(); praise("top"); });
     setTimeout(()=>showModal('<img src="img/kid_top.png" onerror="this.outerHTML=\'🏆\'">', "הגעת לראש הסולם!", `${esc(FIRST)}, אתה אלוף!<br>קיבלת בונוס של <b>${D.set.bonus}</b> נקודות 🎉`, "יששש! 💪"), 900);
     tellDad(`🏆 ${KID} הגיע היום לראש הסולם! (${st.total} נקודות)`); }
   else if(st.step > before.step){ anim = "climb"; SFX.step(); praise("step"); }
@@ -1125,6 +1135,7 @@ const EMOJIS = ["⭐","📖","📚","🙏","✨","💧","🚿","🪥","🛏️",
 let nEmo = "⭐";
 function renderSet(){
   $("voiceOn").checked = L.voice; $("sfxOn").checked = L.sfx;
+  $("introOpt").innerHTML = [["day","פעם ביום"],["always","בכל כניסה"],["off","כבוי"]].map(([k,n])=>`<span class="${introMode()===k?"on":""}" onclick="LS.set('introMode','${k}');renderSet()">${n}</span>`).join("");
   $("edList").innerHTML = CATS.map(c => {
     const its = items().filter(it=>it.c===c.id); if(!its.length) return "";
     return `<div class="muted" style="margin:10px 0 2px;font-weight:800">${c.e} ${c.n}</div>` + its.map(it => {
@@ -1198,6 +1209,29 @@ function sendIdea(){
   $("ideaTxt").value = ""; renderHelp(); sparkle(); toast("💡 הרעיון נשלח לאבא! תודה!"); say("רעיון מעולה! שלחתי לאבא", "");
 }
 
+
+/* ======================= סרטון פתיחה ======================= */
+let introCb = null;
+function playIntro(from, cb){
+  const box = $("intro"), v = $("introV");
+  introCb = cb || null;
+  box.classList.remove("hide","out");
+  try{ v.currentTime = from || 0; }catch(e){}
+  v.muted = !L.sfx && !L.voice;
+  const p = v.play();
+  if(p && p.catch) p.catch(() => { v.muted = true; v.play().catch(()=>introEnd()); });
+  v.onended = introEnd;
+  clearTimeout(box._t); box._t = setTimeout(introEnd, 14000);
+}
+function introEnd(){
+  const box = $("intro"), v = $("introV");
+  if(box.classList.contains("hide") || box.classList.contains("out")) return;
+  box.classList.add("out"); try{ v.pause(); }catch(e){}
+  setTimeout(()=>box.classList.add("hide"), 500);
+  const c = introCb; introCb = null; c && c();
+}
+function introMode(){ return LS.get("introMode") || "day"; }   // day / always / off
+
 /* ======================= חלונות ואפקטים ======================= */
 let modalCb = null, MQ = [];
 function showModal(e, title, html, btn, cls, cb){
@@ -1240,7 +1274,7 @@ function go(v){
   scrollTo(0,0); miniScroll();
 }
 function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(); }
-window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
+window.onBack = () => { if(!$("intro").classList.contains("hide")){ introEnd(); return true; } if($("modal").innerHTML){ closeModal(); return true; } if(CUR==="help"){ go("set"); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
 
 /* ---------- סולם קטן צף ---------- */
 const MR = k => 178 - k*16;   // גובה שלב k בסולם הקטן
@@ -1278,11 +1312,16 @@ try{ const j = NB && NB.bpData(); if(j) setTimeout(()=>window.onBp(j), 300); }ca
 $("lad").innerHTML = ladderSvg();
 miniInit();
 renderToday(); syncInfo();
-setTimeout(() => {
+function greet(){
   const t = dk(new Date());
   if(LS.get("greet") !== t){ LS.set("greet", t); praise("morning"); }
   else praise(calc(t).raw ? "big" : "morning");
-}, 700);
+}
+{
+  const t = dk(new Date()), m = introMode();
+  if(m === "always" || (m === "day" && LS.get("introDay") !== t)){ LS.set("introDay", t); playIntro(0, () => setTimeout(greet, 300)); }
+  else setTimeout(greet, 700);
+}
 pull(true);
 setInterval(() => { if(!document.hidden) pull(false); }, 20000);
 let TODAY0 = dk(new Date());
