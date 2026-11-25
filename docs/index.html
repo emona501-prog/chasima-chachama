@@ -76,6 +76,7 @@ font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1p
 .msg small{display:block;font-size:11px;opacity:.65;margin-top:3px}
 .chatbar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px 12px;background:rgba(15,27,61,.98);border-top:1px solid var(--line);z-index:8}
 .chatbar input{min-width:0}
+.mdel{background:none;border:0;padding:0 4px;font-size:14px;cursor:pointer;opacity:.85;vertical-align:middle}
 .pend{position:fixed;left:0;right:0;bottom:calc(122px + env(safe-area-inset-bottom));z-index:8;display:flex;gap:10px;align-items:center;padding:8px 12px;background:#1e2b55;border-top:1px solid var(--line)}
 .pend img{width:52px;height:52px;object-fit:cover;border-radius:10px;flex:none}.pend .pi{width:52px;height:52px;border-radius:10px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
 .pend .pn{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pend button{flex:none;padding:8px 12px}
@@ -871,7 +872,7 @@ function renderChat(){
   const c=S.chat||{}, ks=chatKeys(), name=(S.cfg||{}).name||"הילד";
   const html = ks.length ? ks.map(k=>{
     const m=c[k]||{}, t=m.t? new Date(m.t).toLocaleString("he-IL",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"numeric"}) : "";
-    return `<div class="msg ${m.from==="p"?"p":"k"}">${m.f?fileHtml(m.f):""}${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}</small></div>`;
+    return `<div class="msg ${m.from==="p"?"p":"k"}">${m.f?fileHtml(m.f):""}${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}${m.from==="p" && !k.startsWith("zzlocal") ? ` <button class="mdel" onclick="delChat('${k}')" title="מחיקה">🗑️</button>` : ""}</small></div>`;
   }).join("") : `<p class="muted" style="text-align:center;margin-top:30px">אין עדיין הודעות 💬<br>אפשר לכתוב ל${esc(name)} כאן</p>`;
   const onChat = !$("t-chat").classList.contains("hide");
   updateChatBadge();
@@ -894,6 +895,16 @@ function updateChatBadge(){
   const r=localStorage.getItem("ch_read")||"", c=S.chat||{};
   const n=chatKeys().filter(k=>k>r && (c[k]||{}).from==="k").length;
   $("chatBadge").textContent=n; $("chatBadge").classList.toggle("hide", !n);
+}
+// 🗑️ מחיקת הודעה ששלחתי – נמחקת גם בנגן (כולל הקובץ שצורף)
+async function delChat(k){
+  const m = (S.chat||{})[k]; if(!m || m.from !== "p") return;
+  if(!confirm("למחוק את ההודעה?\nהיא תימחק גם אצל " + ((S.cfg||{}).name || "הילד") + ".")) return;
+  try{
+    await fb("DELETE", `d/${ID}/chat/${k}`);
+    if(m.f && m.f.k){ fb("DELETE", `d/${ID}/files/${m.f.k}`).catch(()=>{}); fb("DELETE", `d/${ID}/fc/${m.f.k}`).catch(()=>{}); }
+    const c = Object.assign({}, S.chat); delete c[k]; S.chat = c; renderChat(); toast("🗑️ ההודעה נמחקה");
+  }catch(e){ toast("❌ לא נמחק – בדוק אינטרנט"); }
 }
 async function sendChat(){
   if(PEND){ const f = PEND; chatUnpick(); return chatSendFile(f); }
