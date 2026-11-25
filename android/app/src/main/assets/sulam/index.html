@@ -48,6 +48,7 @@ main{padding:12px;max-width:620px;margin:auto}
 .crack{opacity:0;transition:.4s}.crack.on{opacity:1}
 .kid{position:absolute;left:50%;width:56%;transform:translateX(-50%);transition:bottom 1.1s cubic-bezier(.5,1.6,.4,1);z-index:2;pointer-events:none}
 .kid img,.kid svg{width:100%;display:block;filter:drop-shadow(0 6px 8px #0007)}
+.kid.photo{width:40%}
 .kid.climb .kbody{animation:climb .28s 4 alternate ease-in-out}
 @keyframes climb{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-6%) rotate(3deg)}}
 .kid.hang .kbody{animation:hang 1.4s infinite ease-in-out;transform-origin:50% 0}
@@ -566,7 +567,7 @@ function ladderSvg(){
 }
 function kidArt(){
   // תמונה של נחמן (אם קיימת בתיקייה img), אחרת דמות מצוירת
-  return `<img src="img/kid.png" onerror="this.replaceWith(kidSvgEl())" alt="">`;
+  return `<img src="img/kid.png" onload="document.getElementById('kid').classList.add('photo')" onerror="this.replaceWith(kidSvgEl())" alt="">`;
 }
 function kidSvgEl(){
   const w = document.createElement("div");
