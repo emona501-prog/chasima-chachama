@@ -370,6 +370,11 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <button class="ghost sm" onclick="playIntro(0)">▶️ לצפות עכשיו</button>
   </div>
   <div class="card">
+    <h2>📲 אייקון במסך הבית</h2>
+    <p class="muted">מוסיף את נחמן המלך 👑 למסך הבית של הנגן – לוחצים "הוסף" בחלון שקופץ.</p>
+    <button class="y" style="width:100%" onclick="pinIcon()">👑 הוסף אייקון למסך הבית</button>
+  </div>
+  <div class="card">
     <h2>⏰ תזכורת יומית</h2>
     <p class="muted">אם עד השעה הזו עוד לא סימנת כלום – הנגן יזכיר לך. (ליעדים של ברסלב PRO יש תזכורת משלו שם.)</p>
     <div class="row"><input type="time" class="inp" id="remT" style="margin:0;flex:1;color-scheme:dark"><button class="g" onclick="saveRem()">שמירה</button><button class="ghost" onclick="$('remT').value='';saveRem()">בלי</button></div>
@@ -1154,6 +1159,7 @@ function renderSet(){
   try{ $("remT").value = NB ? NB.getRem() : (LS.get("rem")||""); }catch(e){}
   syncInfo();
 }
+function pinIcon(){ let ok = false; try{ ok = NB && NB.pinIcon(); }catch(e){} toast(ok ? "👑 לחץ \"הוסף\" בחלון שקפץ" : "הנגן לא מאפשר – גרור את האייקון מרשימת האפליקציות"); }
 function saveRem(){ const v = $("remT").value; try{ NB ? NB.setRem(v) : LS.set("rem", v); }catch(e){} toast(v ? "⏰ תזכורת כל יום ב-"+v : "התזכורת בוטלה"); }
 function saveSet(){ D.set.at = Date.now(); save(); enqueue("PUT", "set", D.set); renderAll(); }
 function hideItem(id, h){ const it = items().find(x=>x.id===id); if(it){ it.hid = h || undefined; if(!h) delete it.hid; saveSet(); } }
@@ -1320,6 +1326,7 @@ function greet(){
   if(LS.get("greet") !== t){ LS.set("greet", t); praise("morning"); }
   else praise(calc(t).raw ? "big" : "morning");
 }
+if(NB && !LS.get("pinAsked")) setTimeout(()=>{ LS.set("pinAsked","1"); showModal('<img src="img/kid_top.png" style="height:120px" onerror="this.outerHTML=\'👑\'">', "אייקון למסך הבית?", "להוסיף את נחמן המלך 👑 למסך הבית, כדי להיכנס לסולם בלחיצה אחת?", "👑 כן, תוסיף", "", pinIcon); }, 1500);
 {
   const t = dk(new Date()), m = introMode();
   if(m === "always" || (m === "day" && LS.get("introDay") !== t)){ LS.set("introDay", t); playIntro(0, () => setTimeout(greet, 300)); }

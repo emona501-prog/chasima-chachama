@@ -98,6 +98,21 @@ public class SulamActivity extends Activity {
     }
 
     class Bridge {
+        /** אייקון "הסולם שלי" במסך הבית של הנגן (הנגן מציג חלון אישור) */
+        @JavascriptInterface
+        public boolean pinIcon() {
+            try {
+                android.content.Context c = SulamActivity.this;
+                if (!androidx.core.content.pm.ShortcutManagerCompat.isRequestPinShortcutSupported(c)) return false;
+                android.content.Intent i = new android.content.Intent(c, SulamActivity.class).setAction(android.content.Intent.ACTION_MAIN);
+                androidx.core.content.pm.ShortcutInfoCompat sc = new androidx.core.content.pm.ShortcutInfoCompat.Builder(c, "sulam")
+                        .setShortLabel("הסולם שלי")
+                        .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(c, R.mipmap.ic_sulam))
+                        .setIntent(i).build();
+                return androidx.core.content.pm.ShortcutManagerCompat.requestPinShortcut(c, sc, null);
+            } catch (Exception e) { return false; }
+        }
+
         @JavascriptInterface
         public String bpData() { return Cfg.p(SulamActivity.this).getString("bp", ""); }
 
