@@ -49,6 +49,13 @@ public class ChatActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // ההודעות עברו ל"הסולם שלי" (עם תמונות, קבצים ושירים)
+        try {
+            startActivity(new android.content.Intent(this, SulamActivity.class).putExtra("view", "chat")
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+            return;
+        } catch (Exception ignored) {}
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);

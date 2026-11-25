@@ -54,6 +54,20 @@ public class MainActivity extends Activity {
                         + "onclick='location.href=\"" + BuildConfig.SITE + "\"'>נסה שוב</button></body></html>", "text/html; charset=utf-8", "UTF-8");
             }
         });
+        web.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, android.webkit.ValueCallback<Uri[]> cb, FileChooserParams fp) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                try {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(Intent.createChooser(i, "בחר קובץ"), 77);
+                } catch (Exception e) { fileCb = null; return false; }
+                return true;
+            }
+        });
         setContentView(web);
         web.loadUrl(BuildConfig.SITE + tabHash(getIntent()));
 
@@ -63,6 +77,19 @@ public class MainActivity extends Activity {
         }
         askBattery();
         if (!prefs(this).getString("id", "").isEmpty()) AlertService.start(this);
+    }
+
+    private android.webkit.ValueCallback<Uri[]> fileCb;
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == 77 && fileCb != null) {
+            Uri[] r = null;
+            if (res == RESULT_OK && data != null && data.getData() != null) r = new Uri[]{data.getData()};
+            fileCb.onReceiveValue(r);
+            fileCb = null;
+        }
     }
 
     private String tabHash(Intent i) {
@@ -148,6 +175,28 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getDevice() {
             return prefs(MainActivity.this).getString("id", "");
+        }
+
+        /** שמירת קובץ מהצ'אט לתיקיית ההורדות */
+        @JavascriptInterface
+        public String saveFile(String name, String mime, String b64) {
+            try {
+                byte[] data = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                String safe = name == null || name.isEmpty() ? "file" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues v = new android.content.ContentValues();
+                    v.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safe);
+                    v.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                    Uri u = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                    if (u == null) return "";
+                    try (java.io.OutputStream o = getContentResolver().openOutputStream(u)) { o.write(data); }
+                } else {
+                    java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                    dir.mkdirs();
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(dir, safe))) { o.write(data); }
+                }
+                return safe;
+            } catch (Exception e) { return ""; }
         }
 
         @JavascriptInterface

@@ -458,7 +458,7 @@ public class GuardService extends AccessibilityService {
         // פותחים את מסך ההודעות מיד, כדי שהילד יראה גם אם ההתראות כבויות
         main.post(() -> {
             try {
-                startActivity(new Intent(this, ChatActivity.class)
+                startActivity(new Intent(this, SulamActivity.class).putExtra("view", "chat")
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
             } catch (Exception ignored) {}
         });

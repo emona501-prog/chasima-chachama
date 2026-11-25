@@ -59,7 +59,7 @@ final class Notify {
             NotificationChannel ch = new NotificationChannel(CH, "הודעות מאבא", NotificationManager.IMPORTANCE_HIGH);
             nm.createNotificationChannel(ch);
         }
-        Intent i = new Intent(c, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent i = new Intent(c, SulamActivity.class).putExtra("view", "chat").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pi = PendingIntent.getActivity(c, 1, i,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26

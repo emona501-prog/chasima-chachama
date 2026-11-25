@@ -77,6 +77,12 @@ font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1p
 .chatbar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px 12px;background:rgba(15,27,61,.98);border-top:1px solid var(--line);z-index:8}
 .chatbar input{min-width:0}
 .chatbar input{flex:1}
+.msg img.th{display:block;max-width:100%;max-height:240px;border-radius:10px;margin-bottom:4px;cursor:pointer}
+.msg audio,.msg video{width:230px;max-width:100%;display:block;margin:4px 0}
+.msg .fl{display:flex;align-items:center;gap:8px;background:#0002;border-radius:10px;padding:7px;font-weight:700}
+.msg .fl button{padding:5px 9px;font-size:12px;border-radius:9px}
+.upl{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:20;background:#111827ee;border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13px;font-weight:700}
+.lb{position:fixed;inset:0;background:#000e;z-index:30;display:flex;align-items:center;justify-content:center}.lb img{max-width:100%;max-height:100%}
 .bar{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--green);border-radius:99px}
 .bar i.over{background:var(--red)}
@@ -193,8 +199,10 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
       </div>
       <div class="chatbox" id="chatList"></div>
       <div class="chatbar hide" id="chatBar">
+        <button class="ghost" style="flex:none;padding:10px 12px" onclick="$('chatFile').click()" title="צירוף קובץ">📎</button>
         <input id="chatIn" placeholder="כתוב הודעה…" onkeydown="if(event.key==='Enter')sendChat()">
         <button class="g" onclick="sendChat()">שלח</button>
+        <input type="file" id="chatFile" class="hide" onchange="chatAttach(this)">
       </div>
     </div>
 
@@ -829,7 +837,7 @@ function renderChat(){
   const c=S.chat||{}, ks=chatKeys(), name=(S.cfg||{}).name||"הילד";
   $("chatList").innerHTML = ks.length ? ks.map(k=>{
     const m=c[k]||{}, t=m.t? new Date(m.t).toLocaleString("he-IL",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"numeric"}) : "";
-    return `<div class="msg ${m.from==="p"?"p":"k"}">${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}</small></div>`;
+    return `<div class="msg ${m.from==="p"?"p":"k"}">${m.f?fileHtml(m.f):""}${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}</small></div>`;
   }).join("") : `<p class="muted" style="text-align:center;margin-top:30px">אין עדיין הודעות 💬<br>אפשר לכתוב ל${esc(name)} כאן</p>`;
   const onChat = !$("t-chat").classList.contains("hide");
   if(onChat){ markRead(); scrollTo(0, document.body.scrollHeight); }
@@ -855,6 +863,58 @@ async function sendChat(){
     $("chatIn").value=t;
     toast("❌ לא נשלח: "+e.message);
   }
+}
+
+
+/* ---------- קבצים בצ'אט (תמונות, שירים, סרטונים, מסמכים) ---------- */
+const CHUNK = 380000, FMAX = 20*1024*1024, FCACHE = {};
+function fsize(z){ return z > 1048576 ? (z/1048576).toFixed(1)+" MB" : Math.max(1, Math.round(z/1024))+" KB"; }
+function fileHtml(f){
+  const k = esc(f.k), m = f.m || "";
+  if(m.startsWith("image/")) return `<img class="th" src="${f.th?esc(f.th):""}" alt="🖼️" onclick="fileView('${k}','img')">`;
+  if(m.startsWith("audio/")) return `<div class="fl" id="fl_${k}">🎵 ${esc(f.n)}<button class="y" onclick="fileView('${k}','audio')">▶️ השמע</button></div>`;
+  if(m.startsWith("video/")) return `<div class="fl" id="fl_${k}">🎬 ${esc(f.n)}<button class="y" onclick="fileView('${k}','video')">▶️ נגן</button></div>`;
+  return `<div class="fl">📎 ${esc(f.n)} <span class="muted">${fsize(f.z||0)}</span><button class="y" onclick="fileSave('${k}')">💾 שמור</button></div>`;
+}
+function upl(t){ let e = $("uplBox"); if(!t){ if(e) e.remove(); return; } if(!e){ e = document.createElement("div"); e.id = "uplBox"; e.className = "upl"; document.body.appendChild(e); } e.textContent = t; }
+async function fileGet(k){
+  if(FCACHE[k]) return FCACHE[k];
+  upl("⏳ טוען…");
+  const meta = await fb("GET", `d/${ID}/files/${k}`); if(!meta){ upl(""); throw new Error("הקובץ לא נמצא"); }
+  let b64 = ""; for(let i=0;i<meta.c;i++){ b64 += (await fb("GET", `d/${ID}/fc/${k}/${i}`)) || ""; upl(`⏳ טוען… ${Math.round((i+1)/meta.c*100)}%`); }
+  upl(""); return (FCACHE[k] = {meta, b64});
+}
+function b64Blob(b64, mime){ const bin = atob(b64), u = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type: mime}); }
+async function fileView(k, kind){
+  try{
+    const {meta, b64} = await fileGet(k), url = URL.createObjectURL(b64Blob(b64, meta.m));
+    if(kind==="img"){ const d = document.createElement("div"); d.className = "lb"; d.innerHTML = `<img src="${url}"><button class="ghost sm" style="position:absolute;top:14px;left:14px">✕ סגור</button><button class="y sm" style="position:absolute;top:14px;right:14px">💾 שמור</button>`; d.querySelector(".ghost").onclick = () => d.remove(); d.querySelector(".y").onclick = e => { e.stopPropagation(); fileSave(k); }; d.onclick = e => { if(e.target===d) d.remove(); }; document.body.appendChild(d); return; }
+    const el = $("fl_"+k); if(el) el.outerHTML = kind==="audio" ? `<audio controls autoplay src="${url}"></audio>` : `<video controls autoplay playsinline src="${url}"></video>`;
+  }catch(e){ toast("❌ "+e.message); }
+}
+async function fileSave(k){
+  try{
+    const {meta, b64} = await fileGet(k);
+    if(window.ChasimaApp && ChasimaApp.saveFile){ const r = ChasimaApp.saveFile(meta.n, meta.m, b64); toast(r ? "💾 נשמר בהורדות: "+r : "❌ לא הצלחתי לשמור"); }
+    else { const a = document.createElement("a"); a.href = URL.createObjectURL(b64Blob(b64, meta.m)); a.download = meta.n; a.click(); }
+  }catch(e){ toast("❌ "+e.message); }
+}
+function readUrl(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
+function shrink(url, max, q){ return new Promise(res => { const im = new Image(); im.onload = () => { const s = Math.min(1, max/Math.max(im.width, im.height)); const c = document.createElement("canvas"); c.width = Math.round(im.width*s); c.height = Math.round(im.height*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/jpeg", q)); }; im.onerror = () => res(null); im.src = url; }); }
+async function chatAttach(inp){
+  const f = inp.files && inp.files[0]; inp.value = ""; if(!f) return;
+  if(f.size > FMAX) return toast("הקובץ גדול מדי (עד 20MB)");
+  try{
+    upl("⏳ מכין…");
+    let url = await readUrl(f), mime = f.type || "application/octet-stream", name = f.name || "file", th = "";
+    if(mime.startsWith("image/") && !mime.includes("gif")){ const big = await shrink(url, 1600, .82); if(big){ url = big; mime = "image/jpeg"; name = name.replace(/\.\w+$/,"")+".jpg"; } th = await shrink(url, 320, .6) || ""; }
+    const b64 = url.split(",")[1] || "", n = Math.ceil(b64.length/CHUNK), k = Date.now().toString(36)+Math.random().toString(36).slice(2,6), size = Math.round(b64.length*3/4);
+    await fb("PUT", `d/${ID}/files/${k}`, {n:name, m:mime, z:size, c:n, t:Date.now(), from:"p"});
+    for(let i=0;i<n;i++){ await fb("PUT", `d/${ID}/fc/${k}/${i}`, b64.slice(i*CHUNK,(i+1)*CHUNK)); upl(`📤 שולח… ${Math.round((i+1)/n*100)}%`); }
+    const cap = $("chatIn").value.trim(); $("chatIn").value = "";
+    await fb("POST", `d/${ID}/chat`, {from:"p", txt:cap, f:{k, n:name, m:mime, z:size, th}, t:{".sv":"timestamp"}});
+    upl(""); toast("✅ נשלח"); pollAll(true);
+  }catch(e){ upl(""); toast("❌ השליחה נכשלה: "+e.message); }
 }
 
 function sendBanner(){

@@ -59,9 +59,24 @@ public class SulamActivity extends Activity {
         s.setTextZoom(100);
         web.addJavascriptInterface(new Bridge(), "Sulam");
         web.setWebViewClient(new WebViewClient());
+        web.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, android.webkit.ValueCallback<android.net.Uri[]> cb, FileChooserParams fp) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                try {
+                    android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_GET_CONTENT);
+                    i.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(android.content.Intent.createChooser(i, "בחר קובץ"), 77);
+                } catch (Exception e) { fileCb = null; return false; }
+                return true;
+            }
+        });
         setContentView(web);
         live = new java.lang.ref.WeakReference<>(this);
-        web.loadUrl("file:///android_asset/sulam/index.html");
+        String view = getIntent() != null ? getIntent().getStringExtra("view") : null;
+        web.loadUrl("file:///android_asset/sulam/index.html" + (view != null && view.matches("[a-z]+") ? "#" + view : ""));
 
         tts = new TextToSpeech(getApplicationContext(), st -> {
             if (st != TextToSpeech.SUCCESS) return;
@@ -88,6 +103,51 @@ public class SulamActivity extends Activity {
         super.onDestroy();
     }
 
+    private android.webkit.ValueCallback<android.net.Uri[]> fileCb;
+
+    @Override
+    protected void onActivityResult(int req, int res, android.content.Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == 77 && fileCb != null) {
+            android.net.Uri[] r = null;
+            if (res == RESULT_OK && data != null && data.getData() != null) r = new android.net.Uri[]{data.getData()};
+            fileCb.onReceiveValue(r);
+            fileCb = null;
+        }
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+        String view = i.getStringExtra("view");
+        if (view != null && view.matches("[a-z]+") && web != null)
+            web.evaluateJavascript("try{introEnd();go('" + view + "')}catch(e){}", null);
+    }
+
+    /** שמירת קובץ שהגיע בצ'אט לתיקיית ההורדות בנגן */
+    static String saveDownload(android.content.Context c, String name, String mime, String b64) {
+        try {
+            byte[] data = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            String safe = name == null || name.isEmpty() ? "file" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                android.content.ContentValues v = new android.content.ContentValues();
+                v.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, safe);
+                v.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                android.net.Uri u = c.getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (u == null) return "";
+                try (java.io.OutputStream o = c.getContentResolver().openOutputStream(u)) { o.write(data); }
+                return safe;
+            } else {
+                java.io.File dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                dir.mkdirs();
+                java.io.File f = new java.io.File(dir, safe);
+                try (java.io.FileOutputStream o = new java.io.FileOutputStream(f)) { o.write(data); }
+                return safe;
+            }
+        } catch (Exception e) { return ""; }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -105,6 +165,9 @@ public class SulamActivity extends Activity {
                 try { web.evaluateJavascript("window.onUpd&&onUpd(" + JSONObject.quote(String.valueOf(msg)) + ")", null); } catch (Exception ignored) {}
             }));
         }
+
+        @JavascriptInterface
+        public String saveFile(String name, String mime, String b64) { return saveDownload(SulamActivity.this, name, mime, b64); }
 
         @JavascriptInterface
         public String ver() { return BuildConfig.VERSION_NAME; }
@@ -206,8 +269,9 @@ public class SulamActivity extends Activity {
             new Thread(() -> {
                 int ok = 1; String res;
                 try {
-                    String mine = "d/" + Cfg.deviceId(getApplicationContext()) + "/s/";
-                    if (path == null || !path.startsWith(mine) || path.contains("..")) throw new Exception("נתיב לא מורשה");
+                    String me = "d/" + Cfg.deviceId(getApplicationContext()) + "/";
+                    if (path == null || path.contains("..") || !(path.startsWith(me + "s/") || path.startsWith(me + "chat")
+                            || path.startsWith(me + "files/") || path.startsWith(me + "fc/"))) throw new Exception("נתיב לא מורשה");
                     res = Fb.raw(method, path, body == null || body.isEmpty() ? null : body);
                 } catch (Exception e) { ok = 0; res = String.valueOf(e.getMessage()); }
                 final String js = "window.__scb&&__scb(" + JSONObject.quote(cbId) + "," + ok + "," + JSONObject.quote(res == null ? "" : res) + ")";
