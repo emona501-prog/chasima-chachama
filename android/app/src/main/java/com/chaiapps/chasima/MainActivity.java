@@ -208,6 +208,8 @@ public class MainActivity extends Activity {
         if (!guardOn()) Ui.text(this, l, "⚠️ השומר כבוי!", 18, 0xFFFCA5A5, true);
         int used = Cfg.usedSec(this) / 60;
         if (used > 0) Ui.text(this, l, "⏱️ זמן מסך היום: " + (used / 60) + ":" + String.format(java.util.Locale.US, "%02d", used % 60), 15, 0xCCFFFFFF, false);
+        Ui.button(this, l, "🪜 הסולם שלי", Ui.GOLD,
+                v -> startActivity(new Intent(this, SulamActivity.class)));
         Ui.button(this, l, "💬 הודעות עם אבא", Ui.GREEN,
                 v -> startActivity(new Intent(this, ChatActivity.class)));
 
