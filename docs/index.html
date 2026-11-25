@@ -185,6 +185,13 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <button class="ghost sm" onclick="bulk('allow')">אשר את כל הממתינים</button>
         <button class="ghost sm" onclick="bulk('block')">חסום את כל הממתינים</button>
       </div>
+      <div class="card" style="margin-top:12px">
+        <div class="row">
+          <div style="flex:1"><b>🎮 חסימת משחקים אוטומטית</b><div class="muted">משחק חדש שמותקן בנגן נחסם מיד, ותקבל עליו בקשה – אפשר לאשר אם רוצים</div></div>
+          <label class="sw"><input type="checkbox" id="noGames" onchange="patchCfg({noGames:this.checked}, this.checked?'🎮 משחקים חדשים ייחסמו אוטומטית':'חסימת משחקים כבויה')"><i></i></label>
+        </div>
+        <button class="r sm" style="width:100%;margin-top:8px" onclick="blockGames()">🎮 חסום עכשיו את כל המשחקים שבנגן</button>
+      </div>
       <p class="muted" style="margin-top:12px">🟥 חסום – לא נפתח אף פעם · 🟦 מותר – רק בשעות המסך · 🟩 תמיד – גם מחוץ לשעות ובנעילה</p>
     </div>
 
@@ -655,7 +662,7 @@ function renderReqs(){
   $("reqCount").classList.toggle("hide", !ks.length); $("navBadge").classList.toggle("hide", !ks.length);
   $("reqs").innerHTML = ks.length ? ks.map(k=>`
     <div class="app">${appIcon(k)}
-      <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
+      <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].game?(r[k].auto?"🎮 משחק חדש – נחסם אוטומטית":"🎮 הותקן משחק חדש"):r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
     </div>${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
     ${r[k].sys ? `<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 4px">
       <button class="y sm" onclick="sysOpen('${k}',10)">⚙️ 10 ד׳</button>
@@ -722,12 +729,13 @@ function renderApps(){
   let list = Object.keys(apps).map(k=>({k, n:apps[k].n||k, r:rule(k)||(isUtil(k)?"always":"pending"), u:!rule(k)&&isUtil(k)}));
   list.forEach(a=>{cnt.all++;cnt[a.r]++});
   const labels = {all:"הכל",pending:"⏳ ממתינים",allow:"🟦 מותר",always:"🟩 תמיד",block:"🟥 חסום"};
+  if($("noGames")) $("noGames").checked = (S.cfg||{}).noGames !== false;
   $("chips").innerHTML = Object.keys(labels).map(f=>`<span class="chip ${filter===f?"on":""}" onclick="filter='${f}';renderApps()">${labels[f]} ${cnt[f]}</span>`).join("");
   list = list.filter(a=>(filter==="all"||a.r===filter) && (!q || a.n.toLowerCase().includes(q)))
              .sort((a,b)=>(a.r==="pending"?0:1)-(b.r==="pending"?0:1) || a.n.localeCompare(b.n,"he"));
   $("appList").innerHTML = list.length ? list.map(a=>`
     <div class="app">${appIcon(a.k)}
-      <div class="n"><b>${esc(a.n)}</b>${a.r==="pending"?'<span class="muted">⏳ ממתין לאישור (חסום)</span>':""}${a.u?'<span class="muted">🧰 כלי בסיסי – פתוח תמיד</span>':""}</div>
+      <div class="n"><b>${(apps[a.k]||{}).g?"🎮 ":""}${esc(a.n)}</b>${a.r==="pending"?'<span class="muted">⏳ ממתין לאישור (חסום)</span>':""}${a.u?'<span class="muted">🧰 כלי בסיסי – פתוח תמיד</span>':""}</div>
       <div class="seg">
         <span class="block ${a.r==="block"?"on":""}" onclick="setRule('${a.k}','block')">חסום</span>
         <span class="allow ${a.r==="allow"?"on":""}" onclick="setRule('${a.k}','allow')">מותר</span>
@@ -739,6 +747,12 @@ async function setRule(k, v){
   S.cfg.rules = Object.assign({}, S.cfg.rules, {[k]:v}); renderApps();
   try{ await fb("PATCH", `d/${ID}/cfg/rules`, {[k]:v}); if((S.req||{})[k]) await fb("DELETE", `d/${ID}/req/${k}`); }
   catch(e){ toast("❌ "+e.message); }
+}
+async function blockGames(){
+  const o = {}; Object.keys(S.apps||{}).forEach(k => { if((S.apps[k]||{}).g && rule(k)!=="block") o[k] = "block"; });
+  if(!Object.keys(o).length) return toast("לא נמצאו משחקים פתוחים בנגן");
+  S.cfg.rules = Object.assign({}, S.cfg.rules, o); renderApps();
+  try{ await fb("PATCH", `d/${ID}/cfg/rules`, o); toast(`🎮 נחסמו ${Object.keys(o).length} משחקים`); }catch(e){ toast("❌ "+e.message); }
 }
 async function bulk(v){
   const o={}; Object.keys(S.apps||{}).forEach(k=>{ if(!rule(k)) o[k]=v; });

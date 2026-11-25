@@ -74,6 +74,15 @@ final class Apps {
         }
     }
 
+    /** 🎮 האם זו אפליקציית משחק (לפי הסיווג של אנדרואיד / חנות) */
+    static boolean isGame(Context c, String pkg) {
+        try {
+            android.content.pm.ApplicationInfo ai = c.getPackageManager().getApplicationInfo(pkg, 0);
+            if (android.os.Build.VERSION.SDK_INT >= 26 && ai.category == android.content.pm.ApplicationInfo.CATEGORY_GAME) return true;
+            return (ai.flags & android.content.pm.ApplicationInfo.FLAG_IS_GAME) != 0;
+        } catch (Exception e) { return false; }
+    }
+
     /** מעלה את רשימת האפליקציות להורה, ומסמן אפליקציות חדשות כבקשה. */
     static void report(Context c) {
         try {
@@ -85,6 +94,7 @@ final class Apps {
                 a.put("p", p);
                 a.put("n", label(c, p));
                 a.put("i", icon(c, p));
+                if (isGame(c, p)) a.put("g", 1);
                 all.put(Cfg.key(p), a);
             }
             Fb.put("d/" + id + "/apps", all.toString());
@@ -99,6 +109,14 @@ final class Apps {
                     r.put("p", p);
                     r.put("n", label(c, p));
                     r.put("nw", true);
+                    // 🎮 משחק חדש – נחסם אוטומטית (אם אבא לא כיבה את זה)
+                    if (isGame(c, p)) {
+                        r.put("game", true);
+                        if (Cfg.cfg(c).optBoolean("noGames", true)) {
+                            r.put("auto", true);
+                            Fb.patch("d/" + id + "/cfg/rules", new JSONObject().put(Cfg.key(p), "block").toString());
+                        }
+                    }
                     r.put("t", new JSONObject().put(".sv", "timestamp"));
                     Fb.put("d/" + id + "/req/" + Cfg.key(p), r.toString());
                 }

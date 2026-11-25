@@ -554,6 +554,10 @@ public class GuardService extends AccessibilityService {
         }
     };
 
+    private android.view.WindowManager.LayoutParams pillLp;
+    private boolean pillBig = false;
+
+    /** בועת הטיימר: עיגול קטן שאפשר לגרור לכל מקום; לחיצה מגדילה (עם כל הפרטים) ולחיצה נוספת מקטינה. */
     private void updatePill() {
         Timer.State st = Cfg.p(this).getBoolean("pillOff", false) ? null : Timer.get(this, false);
         android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
@@ -561,32 +565,72 @@ public class GuardService extends AccessibilityService {
             if (pill != null) { try { wm.removeView(pill); } catch (Exception ignored) {} pill = null; }
             return;
         }
-        String txt = st.title + "  " + Timer.left(st.end);
+        final float dn = getResources().getDisplayMetrics().density;
         if (pill == null) {
             pill = new android.widget.TextView(this);
             pill.setTextColor(0xFFFFFFFF);
-            pill.setTextSize(15);
             pill.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-            int pd = (int) (8 * getResources().getDisplayMetrics().density);
-            pill.setPadding(pd * 2, pd, pd * 2, pd);
-            android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams(
+            pill.setGravity(android.view.Gravity.CENTER);
+            pillLp = new android.view.WindowManager.LayoutParams(
                     android.view.WindowManager.LayoutParams.WRAP_CONTENT,
                     android.view.WindowManager.LayoutParams.WRAP_CONTENT,
                     android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                     android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                             | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     android.graphics.PixelFormat.TRANSLUCENT);
-            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
-            lp.y = (int) (34 * getResources().getDisplayMetrics().density);
-            try { wm.addView(pill, lp); } catch (Exception e) { pill = null; return; }
+            pillLp.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+            android.content.SharedPreferences sp = Cfg.p(this);
+            pillLp.x = sp.getInt("pillX", (int) (8 * dn));
+            pillLp.y = sp.getInt("pillY", (int) (60 * dn));
+            final float[] down = new float[4];
+            final boolean[] moved = {false};
+            pill.setOnTouchListener((v, e) -> {
+                switch (e.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        down[0] = e.getRawX(); down[1] = e.getRawY(); down[2] = pillLp.x; down[3] = pillLp.y; moved[0] = false;
+                        return true;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        float dx = e.getRawX() - down[0], dy = e.getRawY() - down[1];
+                        if (Math.abs(dx) > 10 * dn || Math.abs(dy) > 10 * dn) moved[0] = true;
+                        if (moved[0]) {
+                            pillLp.x = Math.max(0, (int) (down[2] + dx));
+                            pillLp.y = Math.max(0, (int) (down[3] + dy));
+                            try { wm.updateViewLayout(pill, pillLp); } catch (Exception ignored) {}
+                        }
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:
+                        if (moved[0]) Cfg.p(this).edit().putInt("pillX", pillLp.x).putInt("pillY", pillLp.y).apply();
+                        else { pillBig = !pillBig; updatePill(); }
+                        return true;
+                }
+                return false;
+            });
+            try { wm.addView(pill, pillLp); } catch (Exception e) { pill = null; return; }
         }
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setCornerRadius(60);
         long left = st.end - System.currentTimeMillis();
-        bg.setColor(st.locked ? 0xEEDC2626 : (left < 5 * 60000 ? 0xEEF59E0B : 0xEE16A34A));
+        int color = st.locked ? 0xEEDC2626 : (left < 5 * 60000 ? 0xEEF59E0B : 0xEE16A34A);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(color);
+        bg.setStroke((int) (2 * dn), 0x88FFFFFF);
+        if (pillBig) {
+            bg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(60);
+            pill.setTextSize(15);
+            int pd = (int) (8 * dn);
+            pill.setPadding(pd * 2, pd, pd * 2, pd);
+            pill.setMinWidth(0); pill.setMaxWidth(Integer.MAX_VALUE); pill.setMinHeight(0); pill.setMaxHeight(Integer.MAX_VALUE);
+            pill.setText(st.title + "  " + Timer.left(st.end) + "\n(בשעה " + Timer.clock(st.end) + ")");
+        } else {
+            bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            String t = Timer.left(st.end);
+            pill.setTextSize(t.length() > 5 ? 11 : 13);
+            pill.setPadding(0, 0, 0, 0);
+            int d = (int) (54 * dn);
+            pill.setMinWidth(d); pill.setMinHeight(d); pill.setWidth(d); pill.setHeight(d);
+            pill.setText(t);
+        }
         pill.setBackground(bg);
-        pill.setText(txt);
     }
 
     @Override
