@@ -1387,7 +1387,7 @@ async function fileGet(k){
   if(FCACHE[k]) return FCACHE[k];
   upl("⏳ טוען…");
   const meta = await fbD("GET", "files/"+k);
-  if(!meta) { upl(""); throw new Error("הקובץ לא נמצא"); }
+  if(!meta) { upl(""); throw new Error("הקובץ נמחק בניקוי האחסון"); }
   let b64 = "";
   for(let i=0;i<meta.c;i++){ b64 += (await fbD("GET", `fc/${k}/${i}`)) || ""; upl(`⏳ טוען… ${Math.round((i+1)/meta.c*100)}%`); }
   upl("");
@@ -1426,8 +1426,22 @@ async function chatAttach(inp){
     for(let i=0;i<n;i++){ await fbD("PUT", `fc/${k}/${i}`, b64.slice(i*CHUNK, (i+1)*CHUNK)); upl(`📤 שולח… ${Math.round((i+1)/n*100)}%`); }
     const cap = $("chatIn").value.trim(); $("chatIn").value = "";
     await fbD("POST", "chat", {from: "k", txt: cap, f: {k, n: name, m: mime, z: size, th}, t: {".sv": "timestamp"}});
-    upl(""); toast("✅ נשלח לאבא"); chatLoad(true);
+    upl(""); toast("✅ נשלח לאבא"); chatLoad(true); autoClean();
   }catch(e){ upl(""); toast("❌ השליחה נכשלה – בדוק אינטרנט"); }
+}
+// 🧹 ניקוי אוטומטי: כשהאחסון מגיע ל-80% מהגבול שאבא קבע – מוחקים את הקבצים הישנים ביותר עד 60%
+async function autoClean(){
+  try{
+    const cfg = Object.assign({auto:true, max:800}, await fbD("GET", "fcfg") || {});
+    if(!cfg.auto) return;
+    const L = await fbD("GET", "files") || {}, max = cfg.max*1048576;
+    let tot = Object.values(L).reduce((a,x)=>a+(+x.z||0), 0);
+    if(tot <= max*0.8) return;
+    for(const k of Object.keys(L).sort((a,b)=>(L[a].t||0)-(L[b].t||0))){
+      if(tot <= max*0.6) break;
+      await fbD("DELETE", "fc/"+k); await fbD("DELETE", "files/"+k); tot -= (+L[k].z||0);
+    }
+  }catch(e){}
 }
 async function chatSend(){
   const t = $("chatIn").value.trim(); if(!t) return;

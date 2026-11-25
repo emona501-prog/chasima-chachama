@@ -271,7 +271,7 @@ public class SulamActivity extends Activity {
                 try {
                     String me = "d/" + Cfg.deviceId(getApplicationContext()) + "/";
                     if (path == null || path.contains("..") || !(path.startsWith(me + "s/") || path.startsWith(me + "chat")
-                            || path.startsWith(me + "files/") || path.startsWith(me + "fc/"))) throw new Exception("נתיב לא מורשה");
+                            || path.startsWith(me + "files") || path.startsWith(me + "fc/") || path.startsWith(me + "fcfg"))) throw new Exception("נתיב לא מורשה");
                     res = Fb.raw(method, path, body == null || body.isEmpty() ? null : body);
                 } catch (Exception e) { ok = 0; res = String.valueOf(e.getMessage()); }
                 final String js = "window.__scb&&__scb(" + JSONObject.quote(cbId) + "," + ok + "," + JSONObject.quote(res == null ? "" : res) + ")";
