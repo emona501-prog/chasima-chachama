@@ -90,6 +90,26 @@ main{padding:12px;max-width:620px;margin:auto}
 .kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
 .idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
+/* ברסלב PRO */
+.bp h3 img{width:22px;height:22px;border-radius:6px}
+.bpg{display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;background:rgba(0,0,0,.18);margin-bottom:7px;border:1px solid transparent}
+.bpg.on{background:linear-gradient(135deg,#22c55e2e,#16a34a1c);border-color:#22c55e66}
+.bpg .ic{font-size:24px;width:34px;text-align:center}
+.bpg .nm{flex:1;min-width:0}.bpg .nm b{display:block;font-size:14px}.bpg .nm span{font-size:12px;color:var(--dim)}
+.bpg .gb{height:5px;border-radius:9px;background:#ffffff1a;overflow:hidden;margin-top:5px}.bpg .gb i{display:block;height:100%;background:linear-gradient(90deg,#38bdf8,#a78bfa)}
+.bpg .go{flex:none;font-size:12px;padding:8px 10px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);font-weight:800}
+.bpg.on .go{background:var(--green)}
+.dad{display:flex;gap:10px;align-items:flex-end;margin-bottom:12px}
+.dad .av{width:64px;height:64px;border-radius:50%;flex:none;background:linear-gradient(135deg,#fde68a,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:34px;overflow:hidden;box-shadow:0 4px 14px #0006;border:3px solid #fff}
+.dad .av img{width:100%;height:100%;object-fit:cover;object-position:top}
+.dad .say{flex:1;background:#fff;color:#2b1b6b;border-radius:18px 18px 18px 4px;padding:10px 12px;font-weight:700;font-size:14px;line-height:1.45;box-shadow:0 6px 18px #0005}
+.dad .say b{display:block;color:#7c3aed;font-size:12px;margin-bottom:2px}
+.dad .say .row{margin-top:8px;gap:6px}
+.pl .opt{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;justify-content:center}
+.pl .opt span{padding:8px 11px;border-radius:12px;background:#ffffff14;border:1px solid var(--line);font-size:13px;font-weight:700}
+.pl .opt span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
+.pl label{display:block;text-align:right;font-size:13px;color:var(--dim);margin:8px 0 4px}
+.pl .est{background:#22c55e22;border:1px solid #22c55e55;border-radius:12px;padding:8px;font-size:14px;font-weight:700;margin:8px 0}
 /* סולם קטן צף בצד ימין בזמן גלילה */
 .minil{position:fixed;top:8px;right:8px;width:92px;z-index:30;background:rgba(36,22,100,.96);border:1px solid #ffffff2e;border-radius:18px;padding:6px 6px 8px;box-shadow:0 10px 28px #000a;
   opacity:0;transform:translateX(30px) scale(.7);transform-origin:top right;pointer-events:none;transition:opacity .3s ease,transform .35s cubic-bezier(.2,.9,.3,1.2)}
@@ -233,6 +253,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <main>
     <div id="viewing" class="viewing hide"></div>
     <div id="dadMsg"></div>
+    <div id="dadTip"></div>
     <div class="card" id="stageCard" style="padding:12px">
       <div class="stage">
         <div class="ladwrap" id="lad"></div>
@@ -277,6 +298,9 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
       <li><b>מצילים</b> – עוד כמה נקודות והשלב מתתקן. ירידה לצורך עלייה!</li>
       <li><b>ראש הסולם</b> – ביעד היומי אתה בפסגה, מקבל בונוס, ואבא מקבל הודעה.</li>
     </ol>
+    <h3>📚 ברסלב PRO</h3>
+    <p>היעדים שלך בברסלב PRO (תהלים, תיקון הכללי, שניים מקרא, ליקוטי מוהר״ן וכל ספר) מופיעים בסולם. לוחצים – וזה פותח בדיוק את המקום של היום. מסמנים ✓ בברסלב PRO – והנקודות עולות בסולם לבד!</p>
+    <p>רוצה יעד חדש? "➕ תכנון יעד חדש" – בוחרים מה וכמה כל יום, ואבא כבר דואג שהכול יסתדר.</p>
     <h3>הקופה והפרסים</h3>
     <p>כל נקודה נכנסת לקופה. כשיש מספיק – לוחצים "אני רוצה!", הבקשה מגיעה לאבא, וכשהוא מאשר מקבלים את הפרס באמת. אפשר גם לחסוך לפרס גדול.</p>
     <h3>הכללים שלנו</h3>
@@ -338,6 +362,11 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <button class="ghost sm" style="margin-top:10px" onclick="praise('big')">▶️ נסה עידוד</button>
   </div>
   <div class="card">
+    <h2>⏰ תזכורת יומית</h2>
+    <p class="muted">אם עד השעה הזו עוד לא סימנת כלום – הנגן יזכיר לך. (ליעדים של ברסלב PRO יש תזכורת משלו שם.)</p>
+    <div class="row"><input type="time" class="inp" id="remT" style="margin:0;flex:1;color-scheme:dark"><button class="g" onclick="saveRem()">שמירה</button><button class="ghost" onclick="$('remT').value='';saveRem()">בלי</button></div>
+  </div>
+  <div class="card">
     <h2>📝 המשימות שלי</h2>
     <p class="muted">אפשר להסתיר משימות ולהוסיף חדשות. שינוי ניקוד – רק עם הקוד של אבא.</p>
     <div id="edList"></div>
@@ -361,6 +390,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
       <label class="muted">יעד יומי – ראש הסולם (נקודות)</label><input class="inp" id="sTarget" type="number">
       <label class="muted">בונוס על הגעה לראש הסולם</label><input class="inp" id="sBonus" type="number">
       <label class="muted">כמה נקודות = ₪1</label><input class="inp" id="sRate" type="number">
+      <label class="muted">נקודות לכל יעד שהושלם בברסלב PRO</label><input class="inp" id="sBp" type="number">
       <button class="g" style="width:100%" onclick="saveDad()">שמירה</button>
       <p class="muted">בזמן שההגדרות פתוחות אפשר לשנות את הניקוד ישירות ברשימת המשימות למעלה.</p>
     </div>
@@ -441,7 +471,8 @@ const DEF_PRIZES = [
   {id:"tr",  n:"ממתק / ארטיק", e:"🍦", cost:300, k:"gift"},
   {id:"big", n:"מתנה מיוחדת לבחירה", e:"🎁", cost:5000, k:"gift"},
 ];
-const DEF_SET = () => ({target:150, bonus:30, rate:100, items:DEF_ITEMS, prizes:DEF_PRIZES, at:0});
+const DEF_SET = () => ({target:150, bonus:30, rate:100, bpPts:15, items:DEF_ITEMS, prizes:DEF_PRIZES, at:0});
+const bpPts = () => (D.set.bpPts === undefined || D.set.bpPts === null) ? 15 : (+D.set.bpPts || 0);
 const STEPS = 10;
 
 /* ======================= מצב ושמירה ======================= */
@@ -559,6 +590,7 @@ function calc(key){
   const v = day.v || {};
   let earn = 0, pen = 0;
   for(const it of items()){ const p = itemPts(it, v[it.id]); if(p>0) earn+=p; else pen-=p; }
+  earn += Object.keys(day.bp||{}).length * bpPts();
   const net = earn - pen, raw = Math.max(0, net);
   const target = Math.max(10, +D.set.target||150);
   const top = raw >= target;
@@ -742,7 +774,7 @@ function renderCoin(){ $("coinN").textContent = balance().toLocaleString("he-IL"
 
 function renderTable(){
   const day = D.days[VIEW] || {v:{}}, v = day.v || {}, ro = !editable(VIEW);
-  let h = "";
+  let h = bpCard(day);
   for(const c of CATS.concat(extraCats())){
     const its = items().filter(it => it.c===c.id && (!it.hid || v[it.id]));
     if(!its.length) continue;
@@ -768,7 +800,7 @@ function renderTable(){
   $("table").innerHTML = h;
 }
 function extraCats(){ return []; }
-function renderToday(){ renderHeader(); renderTable(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
+function renderToday(){ renderHeader(); renderTable(); showTip(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
 
 /* ---------- סימון ---------- */
 function setVal(id, val, srcEl){
@@ -788,6 +820,7 @@ function setVal(id, val, srcEl){
   const st = calc(VIEW);
   day.sc = st.total; day.pct = st.pct; day.top = st.top;
   save(); enqueue("PUT", "days/"+VIEW, day); writeSum();
+  try{ if(NB && VIEW === dk(new Date())) NB.markDay(VIEW); }catch(e){}
   const diff = itemPts(it, day.v[id]) - oldP;
   if(diff) flyPlus(diff, srcEl || $("it_"+id));
   renderTable();
@@ -821,6 +854,134 @@ function flyPlus(n, el){
   document.body.appendChild(f); setTimeout(()=>f.remove(), 1200);
 }
 
+
+/* ======================= ברסלב PRO ======================= */
+const BPT = {tikkun:["📜","תיקון הכללי"], smt:["📖","שניים מקרא ואחד תרגום"], teh:["📖","פרקי תהלים"], zohar:["✨","זוהר הקדוש"], hal:["⚖️","שולחן ערוך"], book:["📚","לימוד בספר"], free:["✍️","יעד אישי"]};
+const BPQ = {teh:[1,3,5,10,20], zohar:[1,2,3,5,10], hal:[1,2,3,5,10], book:[1,2,3,5]};
+const BPUNIT = {teh:"פרקים", zohar:"קטעים", hal:"סעיפים", book:"פרקים"};
+function bpApp(){ try{ return NB ? NB.bpApp() : ""; }catch(e){ return ""; } }
+function openBp(act){ let ok = false; try{ ok = NB && NB.openBp(act); }catch(e){} if(!ok) toast(bpApp() ? "לא הצלחתי לפתוח את ברסלב PRO" : "ברסלב PRO לא מותקן בנגן"); return ok; }
+function bpCard(day){
+  const bp = D.bp, inst = bpApp();
+  if(!bp && !inst) return "";
+  const today = VIEW === dk(new Date());
+  let h = `<div class="card cat bp"><h3>📚 ברסלב PRO – הסדר שלי<small>${P(Object.keys(day.bp||{}).length*bpPts())}</small></h3>`;
+  const gs = (bp && bp.goals) || [];
+  if(!today){
+    const done = Object.values(day.bp||{});
+    h += done.length ? done.map(x=>`<div class="bpg on"><div class="ic">${x.ic||"🎯"}</div><div class="nm"><b>${esc(x.lbl)}</b><span>✓ הושלם</span></div></div>`).join("") : `<p class="muted">לא סומנו יעדים ביום הזה</p>`;
+    return h + `</div>`;
+  }
+  if(!gs.length) h += `<p class="muted">${bp ? "עוד אין יעדים בברסלב PRO." : "פתח פעם אחת את ברסלב PRO כדי שהיעדים יגיעו לכאן."} בוא נתכנן יעד ראשון! 👇</p>`;
+  for(const g of gs){
+    const on = !!(day.bp||{})[g.id], pc = g.tot ? Math.min(100, Math.round((g.pos||0)/g.tot*100)) : 0;
+    h += `<div class="bpg ${on?"on":""}" onclick="openBp('g:${esc(g.id)}')"><div class="ic">${g.ic||"🎯"}</div>
+      <div class="nm"><b>${esc(g.lbl||g.n)}</b><span>${on?"✓ סיימת היום · "+P(bpPts()):"היום · "+P(bpPts())+" כשתסמן ✓ בברסלב PRO"}${g.once?" · חד-פעמי":""}</span>
+      ${g.tot?`<div class="gb"><i style="width:${pc}%"></i></div><span>התקדמות: ${pc}% (${g.pos||0} מתוך ${g.tot})</span>`:""}</div>
+      <div class="go">${on?"✓":"📖 פתח"}</div></div>`;
+  }
+  h += `<div class="row" style="margin-top:6px"><button class="ghost sm" style="flex:1" onclick="openBp('goals')">🎯 כל היעדים</button><button class="y sm" style="flex:1" onclick="planGoal()">➕ תכנון יעד חדש</button></div>`;
+  return h + `</div>`;
+}
+// נתונים חדשים מברסלב PRO
+window.onBp = (json) => {
+  let snap; try{ snap = JSON.parse(json); }catch(e){ return; }
+  if(!snap || !Array.isArray(snap.goals)) return;
+  const prev = D.bp; D.bp = snap;
+  const t = dk(new Date());
+  if(snap.dk === t){
+    const day = D.days[t] = D.days[t] || {v:{}};
+    const before = calc(t), old = day.bp || {}, nb = {};
+    for(const g of snap.goals) if(g.done) nb[g.id] = {lbl: g.lbl, ic: g.ic};
+    const added = Object.keys(nb).filter(k=>!old[k]);
+    if(JSON.stringify(Object.keys(nb).sort()) !== JSON.stringify(Object.keys(old).sort())){
+      day.bp = nb; day.at = Date.now();
+      const st = calc(t); day.sc = st.total; day.pct = st.pct; day.top = st.top;
+      enqueue("PUT", "days/"+t, day);
+      try{ NB && NB.markDay(t); }catch(e){}
+      if(added.length && VIEW === t){
+        setTimeout(()=>{
+          flyPlus(added.length*bpPts(), $("stageCard"));
+          if(st.top && !before.top){ SFX.top(); celebrate(); praise("top"); }
+          else if(st.step > before.step){ SFX.step(); praise("step"); }
+          else { SFX.ding(); praise("big"); }
+          renderScore(st.step > before.step ? "climb" : null);
+        }, 500);
+      }
+    }
+  }
+  save(); writeSum();
+  if(!prev || JSON.stringify(prev.books||[]).length !== JSON.stringify(snap.books||[]).length || JSON.stringify(prev.goals) !== JSON.stringify(snap.goals))
+    enqueue("PUT", "bp", {goals: snap.goals.map(g=>({id:g.id, ic:g.ic, lbl:g.lbl, done:g.done && snap.dk===t, pos:g.pos, tot:g.tot})), books: snap.books||[], at: Date.now()});
+  if(CUR === "today") renderToday();
+};
+
+/* ---------- תכנון יעד ---------- */
+let PL = null;
+function hexOf(str){ return Array.from(new TextEncoder().encode(str)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+function planGoal(pre){
+  if(!bpApp()) return toast("כדי לתכנן יעד צריך את ברסלב PRO בנגן");
+  PL = Object.assign({k:"teh", q:3, once:false}, pre||{});
+  renderPlan();
+}
+function renderPlan(){
+  const k = PL.k, qs = BPQ[k], books = ((D.bp||{}).books)||[];
+  if(qs && !qs.includes(+PL.q)) PL.q = qs[Math.min(1, qs.length-1)];
+  let est = "";
+  if(k==="teh"){ const days = Math.ceil(150/PL.q); const end = new Date(Date.now()+days*864e5); est = `🏁 בקצב הזה תסיים את כל ספר תהלים בעוד ${days} ימים – ${heb(end).s}`; }
+  else if(qs){ const ex = ((D.bp||{}).goals||[]).find(g=>g.k===k && (k!=="book" || g.lbl.includes(((books.find(b=>b.b==PL.b)||{}).n)||"~"))); if(ex && ex.tot){ const left = ex.tot-(ex.pos||0), days = Math.ceil(left/PL.q); est = `🏁 בקצב הזה תסיים בעוד ${days} ימים – ${heb(new Date(Date.now()+days*864e5)).s}`; } else est = `📅 ${PL.q} ${BPUNIT[k]} ביום – ברסלב PRO ישמור לך את המקום ויתקדם איתך כל יום`; }
+  else if(k==="tikkun") est = "📜 עשרת המזמורים – כל יום";
+  else if(k==="smt") est = PL.cur ? "🗓️ כל יום העלייה של היום לפי פרשת השבוע" : "🔁 עלייה ביום, בקצב שלך – ממשיכים מאיפה שעצרת";
+  modalForm("🎯 תכנון יעד", `<div class="pl">
+    ${dadSay("בוא נבנה לך סדר מושלם! בחר מה ללמוד, כמה כל יום – ואני אדאג שברסלב PRO יזכור לך את המקום.")}
+    <label>מה ללמוד?</label><div class="opt">${Object.keys(BPT).map(x=>`<span class="${x===k?"on":""}" onclick="PL.k='${x}';renderPlan()">${BPT[x][0]} ${BPT[x][1]}</span>`).join("")}</div>
+    ${k==="book" ? `<label>באיזה ספר?</label><select class="inp" onchange="PL.b=+this.value;renderPlan()">${books.length?"":"<option>פתח קודם את ברסלב PRO</option>"}${books.map(b=>`<option value="${b.b}" ${+PL.b===b.b?"selected":""}>${esc(b.n)}</option>`).join("")}</select>` : ""}
+    ${k==="free" ? `<label>מה היעד?</label><input class="inp" id="plTxt" value="${esc(PL.txt||"")}" placeholder="למשל: התבודדות חצי שעה" oninput="PL.txt=this.value">` : ""}
+    ${qs ? `<label>כמה ${BPUNIT[k]} כל יום?</label><div class="opt">${qs.map(q=>`<span class="${+PL.q===q?"on":""}" onclick="PL.q=${q};renderPlan()">${q}</span>`).join("")}</div>` : ""}
+    ${k==="smt" ? `<div class="opt"><span class="${PL.cur?"":"on"}" onclick="PL.cur=false;renderPlan()">🔁 הקצב שלי</span><span class="${PL.cur?"on":""}" onclick="PL.cur=true;renderPlan()">🗓️ לפי פרשת השבוע</span></div>` : ""}
+    <div class="opt"><span class="${PL.once?"":"on"}" onclick="PL.once=false;renderPlan()">🔁 סדר קבוע</span><span class="${PL.once?"on":""}" onclick="PL.once=true;renderPlan()">✅ פעם אחת</span></div>
+    <div class="est">${est}</div>
+    <p class="muted">כל יעד שתסמן ✓ בברסלב PRO = ${bpPts()} נקודות בסולם 🪜</p></div>`, sendPlan, "🎯 קבע את היעד בברסלב PRO");
+  if(k==="book" && PL.b===undefined && books[0]) PL.b = books[0].b;
+}
+function sendPlan(){
+  const o = {k: PL.k};
+  if(BPQ[PL.k]) o.q = +PL.q;
+  if(PL.k==="book"){ if(PL.b===undefined) return toast("בחר ספר"); o.b = +PL.b; }
+  if(PL.k==="free"){ const t = (PL.txt||"").trim(); if(!t) return toast("כתוב מה היעד"); o.txt = t.slice(0,60); }
+  if(PL.once) o.once = 1; if(PL.cur) o.cur = 1;
+  if(openBp("ng:" + hexOf(JSON.stringify(o)))){ say("יאללה! קבענו יעד. אני בטוח שתצליח!", ""); }
+}
+
+/* ---------- הדמות של אבא ---------- */
+function dadAv(){ return `<div class="av"><img src="img/dad.png" onerror="this.outerHTML='👨'" alt=""></div>`; }
+function dadSay(txt, extra){ return `<div class="dad">${dadAv()}<div class="say"><b>אבא</b>${txt}${extra||""}</div></div>`; }
+const TIPS = [
+  {t:`${FIRST}, רוצה לסיים את כל ספר תהלים? בוא נקבע כמה פרקים ביום – ואני אסדר לך סדר מושלם!`, pre:{k:"teh", q:5}},
+  {t:"מה דעתך על ליקוטי מוהר״ן כל יום? אפילו תורה קטנה – וזה מצטבר לאוצר!", pre:{k:"book", b:0, q:1}},
+  {t:"שניים מקרא ואחד תרגום – בוא נתחיל השבוע! זה מטפס לך שלבים בסולם כל יום 🪜", pre:{k:"smt"}},
+  {t:"תיקון הכללי כל יום – ככה רבנו ביקש. רוצה שנקבע את זה כסדר קבוע?", pre:{k:"tikkun"}},
+  {t:"ספר המידות – מידה אחת ביום ואתה נהיה אדם אחר. ננסה?", pre:{k:"book", q:1, bn:"ספר המידות"}},
+  {t:"זוהר הקדוש – קטע אחד ביום. רק כמה דקות, אור גדול!", pre:{k:"zohar", q:1}},
+];
+function showTip(){
+  if(!bpApp() || VIEW !== dk(new Date())) { $("dadTip").innerHTML = ""; return; }
+  const t = dk(new Date());
+  if(LS.get("tipDay") === "x"+t) { $("dadTip").innerHTML = ""; return; }
+  const gs = ((D.bp||{}).goals)||[];
+  const pool = TIPS.filter(x => !gs.some(g => g.k === x.pre.k && x.pre.k !== "book"));
+  if(!pool.length){ $("dadTip").innerHTML = ""; return; }
+  const n = (+(t.replace(/-/g,"")) ) % pool.length, tip = pool[n];
+  window.__tip = tip;
+  $("dadTip").innerHTML = dadSay(esc(tip.t), `<div class="row"><button class="y sm" onclick="tipGo()">🎯 יאללה, בוא נתכנן!</button><button class="ghost sm" style="color:#2b1b6b" onclick="LS.set('tipDay','x${t}');showTip()">אחר כך</button></div>`);
+}
+function tipGo(){
+  const tip = window.__tip; if(!tip) return;
+  const pre = Object.assign({}, tip.pre);
+  if(pre.bn){ const b = (((D.bp||{}).books)||[]).find(x=>x.n.replace(/[״"]/g,"").includes(pre.bn.replace(/[״"]/g,""))); if(b) pre.b = b.b; delete pre.bn; }
+  planGoal(pre);
+}
+
 /* ======================= הודעות מאבא ======================= */
 function seenMsgs(){ try{ return JSON.parse(LS.get("seen")||"{}"); }catch(e){ return {}; } }
 function showDadMsg(){
@@ -828,14 +989,23 @@ function showDadMsg(){
   const seen = seenMsgs();
   const last = ks.at(-1), m = D.msg[last];
   const fresh = ks.filter(k=>!seen[k]);
-  $("dadMsg").innerHTML = `<div class="msgcard" onclick="say(D.msg['${last}'].txt,'')"><div class="e">💌</div><div><b>הודעה מאבא</b>${esc(m.txt)}</div></div>`;
+  $("dadMsg").innerHTML = dadSay(esc(m.txt), m.deal ? `<div class="row"><button class="y sm" onclick="dealGo('${last}')">🎯 ${esc(m.deal.btn||"יאללה, בוא נתכנן!")}</button></div>` : "");
   if(fresh.length){
     const k = fresh.at(-1), mm = D.msg[k];
     for(const x of fresh) seen[x] = 1; LS.set("seen", JSON.stringify(seen));
-    sparkle(); showModal("💌", "הודעה מאבא", esc(mm.txt), "❤️ תודה אבא", "letter");
+    sparkle();
+    if(mm.deal) showModal(`<img src="img/dad.png" style="height:120px;border-radius:50%" onerror="this.outerHTML='👨'">`, "🎯 לאבא יש הצעה בשבילך!", esc(mm.txt) + (mm.deal.bonus ? `<br><b>🎁 בונוס מיוחד: ${mm.deal.bonus} נקודות!</b>` : ""), "🎯 יאללה, בוא נתכנן!", "", () => dealGo(k));
+    else showModal(`<img src="img/dad.png" style="height:120px;border-radius:50%" onerror="this.outerHTML='💌'">`, "הודעה מאבא", esc(mm.txt), "❤️ תודה אבא", "letter");
     say(mm.txt, "");
     for(const x of fresh) enqueue("PATCH", "msg/"+x, {seen: Date.now()});
   }
+}
+function dealGo(k){
+  const m = (D.msg||{})[k]; if(!m || !m.deal) return;
+  const d = m.deal, pre = {k: d.k || "teh"};
+  ["q","b","txt","once","cur"].forEach(x => { if(d[x] !== undefined) pre[x] = d[x]; });
+  if(d.k === "none" || !BPT[pre.k]) return;
+  planGoal(pre);
 }
 function tellDad(txt){
   if(!NB) return;
@@ -969,9 +1139,11 @@ function renderSet(){
   $("nEmo").innerHTML = EMOJIS.map(e=>`<span class="${e===nEmo?"on":""}" onclick="nEmo='${e}';renderSet()">${e}</span>`).join("");
   $("nCat").innerHTML = CATS.map(c=>`<option value="${c.id}">${c.e} ${c.n}</option>`).join("");
   $("dadLock").classList.toggle("hide", DAD); $("dadSet").classList.toggle("hide", !DAD);
-  if(DAD){ $("sTarget").value = D.set.target; $("sBonus").value = D.set.bonus; $("sRate").value = D.set.rate; }
+  if(DAD){ $("sTarget").value = D.set.target; $("sBonus").value = D.set.bonus; $("sRate").value = D.set.rate; $("sBp").value = bpPts(); }
+  try{ $("remT").value = NB ? NB.getRem() : (LS.get("rem")||""); }catch(e){}
   syncInfo();
 }
+function saveRem(){ const v = $("remT").value; try{ NB ? NB.setRem(v) : LS.set("rem", v); }catch(e){} toast(v ? "⏰ תזכורת כל יום ב-"+v : "התזכורת בוטלה"); }
 function saveSet(){ D.set.at = Date.now(); save(); enqueue("PUT", "set", D.set); renderAll(); }
 function hideItem(id, h){ const it = items().find(x=>x.id===id); if(it){ it.hid = h || undefined; if(!h) delete it.hid; saveSet(); } }
 function setPts(id, v){ const it = items().find(x=>x.id===id); if(it && DAD){ it.p = Math.max(0, +v||0); saveSet(); } }
@@ -993,6 +1165,7 @@ function saveDad(){
   D.set.target = Math.max(10, +$("sTarget").value||150);
   D.set.bonus = Math.max(0, +$("sBonus").value||0);
   D.set.rate = Math.max(1, +$("sRate").value||100);
+  D.set.bpPts = Math.max(0, +$("sBp").value||0);
   saveSet(); DAD = false; renderSet(); toast("✅ נשמר");
 }
 
@@ -1034,9 +1207,9 @@ function showModal(e, title, html, btn, cls, cb){
     <button class="y" style="width:100%;font-size:18px" onclick="const c=modalCb;closeModal();c&&c()">${btn}</button>
     ${cb?`<button class="ghost" style="width:100%;margin-top:8px" onclick="closeModal()">ביטול</button>`:""}</div></div>`;
 }
-function modalForm(title, inner, cb){
+function modalForm(title, inner, cb, btn){
   modalCb = cb;
-  $("modal").innerHTML = `<div class="modal"><div class="box"><h2>${title}</h2>${inner}<button class="g" style="width:100%" onclick="const c=modalCb;closeModal();c&&c()">שמירה</button><button class="ghost" style="width:100%;margin-top:8px" onclick="closeModal()">ביטול</button></div></div>`;
+  $("modal").innerHTML = `<div class="modal"><div class="box"><h2>${title}</h2>${inner}<button class="g" style="width:100%" onclick="const c=modalCb;closeModal();c&&c()">${btn||"שמירה"}</button><button class="ghost" style="width:100%;margin-top:8px" onclick="closeModal()">ביטול</button></div></div>`;
 }
 function closeModal(){ $("modal").innerHTML = ""; if(MQ.length) setTimeout(()=>{ if(MQ.length && !$("modal").innerHTML) showModal(...MQ.shift()); }, 250); }
 const cv = $("fx"), cx = cv.getContext("2d"); let parts = [], fxOn = false;
@@ -1101,6 +1274,7 @@ addEventListener("scroll", miniScroll, {passive:true});
 
 /* ======================= התחלה ======================= */
 new Image().src = "img/kid_top.png";
+try{ const j = NB && NB.bpData(); if(j) setTimeout(()=>window.onBp(j), 300); }catch(e){}
 $("lad").innerHTML = ladderSvg();
 miniInit();
 renderToday(); syncInfo();

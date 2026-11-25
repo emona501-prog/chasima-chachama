@@ -298,6 +298,17 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <div class="chips" id="sulQuick" style="flex-wrap:wrap"></div>
         <textarea id="sulMsg" rows="2" placeholder="למשל: נחמן, ראיתי שהתפללת בכוונה – אני כל כך גאה בך! ❤️"></textarea>
         <div style="height:8px"></div>
+        <details id="dealBox"><summary class="muted" style="padding:6px 0">🎯 לצרף הצעה ליעד (דיל) – יופיע אצלו עם כפתור "יאללה, בוא נתכנן!"</summary>
+          <div class="grid2" style="margin-top:6px">
+            <select id="dealK" onchange="dealUi()"><option value="">בלי הצעה</option><option value="teh">📖 פרקי תהלים</option><option value="book">📚 ספר (ליקוטי מוהר״ן וכו׳)</option><option value="smt">📖 שניים מקרא ואחד תרגום</option><option value="tikkun">📜 תיקון הכללי</option><option value="zohar">✨ זוהר</option><option value="hal">⚖️ שולחן ערוך</option><option value="free">✍️ יעד אישי</option></select>
+            <input id="dealQ" type="number" inputmode="numeric" placeholder="כמה ביום">
+          </div>
+          <select id="dealB" class="hide" style="margin-top:8px"></select>
+          <input id="dealTxt" class="hide" style="margin-top:8px" placeholder="מה היעד האישי?">
+          <input id="dealBonus" type="number" inputmode="numeric" style="margin-top:8px" placeholder="בונוס שמובטח לו (נקודות, לא חובה)">
+          <div class="muted" style="margin-top:6px">הבונוס מופיע לו בהצעה – את הנקודות עצמן מוסיפים ב"הקופה שלו" כשהוא עומד ביעד.</div>
+        </details>
+        <div style="height:8px"></div>
         <button class="p" style="width:100%" onclick="sulSend()">💌 שליחה</button>
         <div id="sulMsgs" style="margin-top:10px"></div>
       </div>
@@ -941,14 +952,20 @@ function tab(t){
 
 
 /* ---------- הסולם (סדר יום) ---------- */
-const SUL = {set:null, kupa:{}, msg:{}, sum:null, ideas:{}, editing:false, busy:false};
+const SUL = {set:null, kupa:{}, msg:{}, sum:null, ideas:{}, bp:null, editing:false, busy:false};
+function dealUi(){
+  const k = $("dealK").value, books = ((SUL.bp||{}).books)||[];
+  $("dealB").classList.toggle("hide", k!=="book"); $("dealTxt").classList.toggle("hide", k!=="free");
+  $("dealQ").classList.toggle("hide", !["teh","book","zohar","hal"].includes(k));
+  if(k==="book" && !$("dealB").options.length) $("dealB").innerHTML = books.length ? books.map(b=>`<option value="${b.b}">${esc(b.n)}</option>`).join("") : `<option value="0">ליקוטי מוהר״ן</option>`;
+}
 const IDEA_K = {func:"✨ פונקציה חדשה", up:"🚀 שדרוג", change:"🔧 שינוי", sec:"📂 מדור חדש", other:"💬 אחר"};
 const SUL_QUICK = ["אתה אלוף! 🏆","אבא גאה בך ❤️","אין כמוך נסיך 👑","ראיתי שהתפללת בכוונה – אשריך! 🙏","קדימה, אתה יכול! 💪","אני אוהב אותך 💙"];
 async function pollSulam(force){
   if(SUL.busy) return; SUL.busy = true;
   try{
-    const [set, kupa, msg, sum, ideas] = await Promise.all(["set","kupa","msg","sum","ideas"].map(n=>fb("GET", `d/${ID}/s/${n}`)));
-    SUL.ideas = ideas||{};
+    const [set, kupa, msg, sum, ideas, bp] = await Promise.all(["set","kupa","msg","sum","ideas","bp"].map(n=>fb("GET", `d/${ID}/s/${n}`)));
+    SUL.ideas = ideas||{}; SUL.bp = bp;
     if(!SUL.editing || force) SUL.set = set;
     SUL.kupa = kupa||{}; SUL.msg = msg||{}; SUL.sum = sum;
     renderSulam(force);
@@ -983,6 +1000,7 @@ function renderSulam(force){
       <div class="row"><div style="font-size:40px;font-weight:900">${sc}</div><div style="flex:1"><div class="muted">נקודות · ${pct}% מהיעד · שלב ${step}/10</div><div class="bar"><i style="width:${pct}%"></i></div></div></div>
       ${isToday&&t.brk?`<div class="alert">🆘 שלב נשבר – הוא צריך להציל אותו</div>`:""}
       <div class="chips" style="flex-wrap:wrap">${done||'<span class="muted">עוד לא סימן כלום היום</span>'}${bad}</div>
+      ${SUL.bp && (SUL.bp.goals||[]).length ? `<div class="muted" style="margin-top:4px">📚 יעדים בברסלב PRO:</div><div class="chips" style="flex-wrap:wrap">${SUL.bp.goals.map(g=>`<span class="chip" style="${g.done?"background:rgba(34,197,94,.25)":""}">${g.done?"✅":"⏳"} ${esc(g.lbl)}${g.tot?` · ${Math.round((g.pos||0)/g.tot*100)}%`:""}</span>`).join("")}</div>` : ""}
       <p class="muted">עודכן ${ago(sum.at)}</p>`;
   }
   // בקשות
@@ -999,7 +1017,7 @@ function renderSulam(force){
   // פרגונים
   $("sulQuick").innerHTML = SUL_QUICK.map(q=>`<span class="chip" onclick="$('sulMsg').value=this.textContent">${esc(q)}</span>`).join("");
   const mk = Object.keys(SUL.msg).sort().slice(-4).reverse();
-  $("sulMsgs").innerHTML = mk.map(k=>{ const m=SUL.msg[k]; return `<div class="muted" style="padding:4px 0">💌 ${esc(m.txt)} · ${ago(m.t)} ${m.seen?"✓✓ נקרא":"✓"}</div>`; }).join("");
+  $("sulMsgs").innerHTML = mk.map(k=>{ const m=SUL.msg[k]; return `<div class="muted" style="padding:4px 0">${m.deal?"🎯":"💌"} ${esc(m.txt)} · ${ago(m.t)} ${m.seen?"✓✓ נקרא":"✓"}</div>`; }).join("");
   // קופה
   const rate = Math.max(1, +((set||{}).rate)||100), bal = (sum||{}).bal||0;
   $("sulBal").innerHTML = `${bal.toLocaleString("he-IL")} ⭐ <span class="muted" style="font-size:15px">≈ ${(bal/rate).toLocaleString("he-IL",{maximumFractionDigits:1})} ₪</span>`;
@@ -1072,7 +1090,16 @@ async function sulAnswer(k, ok){
 async function sulSend(){
   const t = $("sulMsg").value.trim(); if(!t) return toast("כתוב משהו");
   const k = Date.now().toString(36);
-  try{ await fb("PUT", `d/${ID}/s/msg/${k}`, {txt:t, t:Date.now()}); $("sulMsg").value=""; toast("💌 נשלח!");
+  const m = {txt:t, t:Date.now()}, dk = $("dealK").value;
+  if(dk){
+    const d = {k:dk};
+    if(["teh","book","zohar","hal"].includes(dk) && +$("dealQ").value) d.q = Math.max(1, Math.min(50, +$("dealQ").value));
+    if(dk==="book") d.b = +$("dealB").value || 0;
+    if(dk==="free"){ const x = $("dealTxt").value.trim(); if(!x) return toast("כתוב מה היעד האישי"); d.txt = x.slice(0,60); }
+    if(+$("dealBonus").value) d.bonus = Math.round(+$("dealBonus").value);
+    m.deal = d;
+  }
+  try{ await fb("PUT", `d/${ID}/s/msg/${k}`, m); $("sulMsg").value=""; $("dealK").value=""; $("dealBonus").value=""; dealUi(); $("dealBox").open=false; toast(m.deal?"🎯 ההצעה נשלחה!":"💌 נשלח!");
     const ks = Object.keys(SUL.msg).sort(); for(const old of ks.slice(0, Math.max(0, ks.length-25))) fb("DELETE", `d/${ID}/s/msg/${old}`).catch(()=>{});
     pollSulam(); }catch(e){ toast("❌ "+e.message); }
 }

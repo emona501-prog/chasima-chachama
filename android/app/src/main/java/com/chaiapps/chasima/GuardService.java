@@ -72,6 +72,7 @@ public class GuardService extends AccessibilityService {
             // גיבוי: מושכים את ההגדרות וההודעות מההורה כל 6 שניות, גם אם ההאזנה החיה נקטעה
             io.execute(() -> pullCfg("d/" + Cfg.deviceId(GuardService.this) + "/cfg"));
             io.execute(GuardService.this::pollChat);
+            if (++sulN % 5 == 0) io.execute(GuardService.this::sulamTick);
             maybeAutoUpdate();
             if (System.currentTimeMillis() - lastBeat > 45000) beat();
             main.postDelayed(this, 6000);
@@ -357,6 +358,45 @@ public class GuardService extends AccessibilityService {
                 wait = Math.min(wait * 2, 60000);
             }
         }
+    }
+
+    private int sulN = 0;
+
+    /** 🪜 הסולם: התראה על הודעה/הצעה חדשה מאבא, ותזכורת יומית אם עוד לא סימן כלום. */
+    private void sulamTick() {
+        android.content.SharedPreferences sp = Cfg.p(this);
+        try {
+            String json = Fb.last("d/" + Cfg.deviceId(this) + "/s/msg", 1);
+            if (json != null && !json.equals("null")) {
+                JSONObject all = new JSONObject(json);
+                java.util.Iterator<String> it = all.keys();
+                if (it.hasNext()) {
+                    String k = it.next();
+                    String seen = sp.getString("sulMsg", "");
+                    if (k.compareTo(seen) > 0) {
+                        sp.edit().putString("sulMsg", k).apply();
+                        JSONObject m = all.optJSONObject(k);
+                        if (!seen.isEmpty() && m != null && m.optLong("seen", 0) == 0) {
+                            boolean deal = m.optJSONObject("deal") != null;
+                            Notify.sulam(this, 1101, deal ? "🎯 לאבא יש הצעה בשבילך!" : "💌 אבא שלח לך הודעה", m.optString("txt", ""));
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        // תזכורת יומית
+        try {
+            String rem = sp.getString("sulRem", "");
+            if (rem.matches("\\d{2}:\\d{2}")) {
+                String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+                String now = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date());
+                if (now.compareTo(rem) >= 0 && !today.equals(sp.getString("sulRemDone", "")) ) {
+                    sp.edit().putString("sulRemDone", today).apply();
+                    if (!today.equals(sp.getString("sulDay", "")))
+                        Notify.sulam(this, 1102, "🪜 הסולם מחכה לך!", "עוד לא סימנת היום – כמה לחיצות ואתה מטפס. קדימה אלוף! 💪");
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     /** גיבוי להתראות צ'אט: מושך את ההודעה האחרונה ומתריע אם היא מאבא. */

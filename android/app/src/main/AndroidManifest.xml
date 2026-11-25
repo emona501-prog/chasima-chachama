@@ -100,6 +100,15 @@
             </intent-filter>
         </activity>
 
+        <!-- 🪜 ברסלב PRO שולח לכאן את היעדים של נחמן -->
+        <receiver
+            android:name=".BpSync"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.chaiapps.chasima.BP_SYNC" />
+            </intent-filter>
+        </receiver>
+
         <activity
             android:name=".BannerActivity"
             android:exported="false"

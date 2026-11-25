@@ -22,6 +22,26 @@ public class SulamActivity extends Activity {
 
     private WebView web;
     private TextToSpeech tts;
+    private static java.lang.ref.WeakReference<SulamActivity> live = new java.lang.ref.WeakReference<>(null);
+
+    static final String[] BP_PKGS = {"com.chaiproductions.breslovpro.lite", "com.chaiproductions.breslovpro"};
+
+    /** נתונים חדשים מברסלב PRO – אם המסך פתוח, מעבירים מיד לדף. */
+    static void pushBp(String json) {
+        SulamActivity a = live.get();
+        if (a == null || a.web == null) return;
+        final String js = "window.onBp&&onBp(" + JSONObject.quote(json) + ")";
+        a.runOnUiThread(() -> { try { a.web.evaluateJavascript(js, null); } catch (Exception ignored) {} });
+    }
+
+    /** איזה ברסלב PRO מותקן (קודם זה ששלח נתונים לאחרונה). */
+    String bpPkg() {
+        String last = Cfg.p(this).getString("bpPkg", "");
+        android.content.pm.PackageManager pm = getPackageManager();
+        if (!last.isEmpty() && pm.getLaunchIntentForPackage(last) != null) return last;
+        for (String p : BP_PKGS) if (pm.getLaunchIntentForPackage(p) != null) return p;
+        return "";
+    }
     private boolean ttsOk = false;
 
     @Override
@@ -40,6 +60,7 @@ public class SulamActivity extends Activity {
         web.addJavascriptInterface(new Bridge(), "Sulam");
         web.setWebViewClient(new WebViewClient());
         setContentView(web);
+        live = new java.lang.ref.WeakReference<>(this);
         web.loadUrl("file:///android_asset/sulam/index.html");
 
         tts = new TextToSpeech(getApplicationContext(), st -> {
@@ -67,7 +88,50 @@ public class SulamActivity extends Activity {
         super.onDestroy();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        live = new java.lang.ref.WeakReference<>(this);
+        // חוזרים מברסלב PRO – מבקשים ממנו לשלוח שוב (ואם כבר שלח – הדף יקבל את האחרון)
+        String d = Cfg.p(this).getString("bp", "");
+        if (!d.isEmpty() && web != null) web.postDelayed(() -> pushBp(d), 400);
+    }
+
     class Bridge {
+        @JavascriptInterface
+        public String bpData() { return Cfg.p(SulamActivity.this).getString("bp", ""); }
+
+        @JavascriptInterface
+        public String bpApp() { return bpPkg(); }
+
+        /** פתיחת ברסלב PRO במקום מסוים: g:<יעד> / ng:<יעד חדש> / goals */
+        @JavascriptInterface
+        public boolean openBp(String act) {
+            String pkg = bpPkg();
+            if (pkg.isEmpty() || act == null || !act.matches("[a-z:0-9]+")) return false;
+            try {
+                android.content.Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+                if (i == null) return false;
+                i.putExtra("wact", act);
+                i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(i);
+                return true;
+            } catch (Exception e) { return false; }
+        }
+
+        /** תזכורת יומית (HH:MM, ריק = בלי) */
+        @JavascriptInterface
+        public void setRem(String hhmm) {
+            Cfg.p(SulamActivity.this).edit().putString("sulRem", hhmm == null ? "" : hhmm).apply();
+        }
+
+        @JavascriptInterface
+        public String getRem() { return Cfg.p(SulamActivity.this).getString("sulRem", ""); }
+
+        /** היום כבר סימנו משהו – לא צריך תזכורת */
+        @JavascriptInterface
+        public void markDay(String dk) { Cfg.p(SulamActivity.this).edit().putString("sulDay", dk).apply(); }
+
         @JavascriptInterface
         public String id() { return Cfg.deviceId(SulamActivity.this); }
 
