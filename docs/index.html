@@ -596,10 +596,14 @@ async function openNow(k, min){
   }catch(e){ toast("❌ "+e.message); }
 }
 
+function isUtil(k){
+  const p=(k||"").toLowerCase().replace(/,/g,".");
+  return /calculator|\.calc$|deskclock|\.clock$|alarmclock|gallery|documentsui|filemanager|fileexplorer|\.files$|apps\.nbu\.files|bluetooth/.test(p);
+}
 function renderApps(){
   const apps = S.apps||{}, q = ($("q").value||"").trim().toLowerCase();
   const cnt = {all:0,pending:0,allow:0,always:0,block:0};
-  let list = Object.keys(apps).map(k=>({k, n:apps[k].n||k, r:rule(k)||"pending"}));
+  let list = Object.keys(apps).map(k=>({k, n:apps[k].n||k, r:rule(k)||(isUtil(k)?"always":"pending"), u:!rule(k)&&isUtil(k)}));
   list.forEach(a=>{cnt.all++;cnt[a.r]++});
   const labels = {all:"הכל",pending:"⏳ ממתינים",allow:"🟦 מותר",always:"🟩 תמיד",block:"🟥 חסום"};
   $("chips").innerHTML = Object.keys(labels).map(f=>`<span class="chip ${filter===f?"on":""}" onclick="filter='${f}';renderApps()">${labels[f]} ${cnt[f]}</span>`).join("");
@@ -607,7 +611,7 @@ function renderApps(){
              .sort((a,b)=>(a.r==="pending"?0:1)-(b.r==="pending"?0:1) || a.n.localeCompare(b.n,"he"));
   $("appList").innerHTML = list.length ? list.map(a=>`
     <div class="app">${appIcon(a.k)}
-      <div class="n"><b>${esc(a.n)}</b>${a.r==="pending"?'<span class="muted">⏳ ממתין לאישור (חסום)</span>':""}</div>
+      <div class="n"><b>${esc(a.n)}</b>${a.r==="pending"?'<span class="muted">⏳ ממתין לאישור (חסום)</span>':""}${a.u?'<span class="muted">🧰 כלי בסיסי – פתוח תמיד</span>':""}</div>
       <div class="seg">
         <span class="block ${a.r==="block"?"on":""}" onclick="setRule('${a.k}','block')">חסום</span>
         <span class="allow ${a.r==="allow"?"on":""}" onclick="setRule('${a.k}','allow')">מותר</span>

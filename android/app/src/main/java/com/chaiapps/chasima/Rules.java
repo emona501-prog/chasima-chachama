@@ -76,6 +76,9 @@ final class Rules {
         // מחיקת אפליקציות – מותרת תמיד (את חסימה חכמה מגן "מנהל המכשיר")
         if (isInstaller(pkg) && cls != null && cls.toLowerCase(java.util.Locale.US).contains("uninstall")) return null;
 
+        // בלוטות' בהגדרות – תמיד מותר
+        if (pkg.equals(SETTINGS) && cls != null && cls.endsWith("|bt")) return null;
+
         // הגדרות המכשיר והתקנת אפליקציות – רק באישור הורה
         if (pkg.equals(SETTINGS) || isInstaller(pkg)) {
             if (Cfg.localSettingsUntil(c) > now) return null;
@@ -86,6 +89,9 @@ final class Rules {
         // רכיבי מערכת שאין להם אייקון (מסכי הרשאות וכו') – לא נוגעים
         if (!launchable.contains(pkg)) return null;
         if (isPhone(pkg)) return null;
+
+        // כלים בסיסיים (מחשבון, שעון מעורר, גלריה, קבצים, בלוטות') – פתוחים תמיד, אלא אם אבא חסם במפורש
+        if (isUtility(pkg) && !rule(cfg, pkg).equals("block")) return null;
 
         // השהיית כל ההגנה ע"י ההורה – הכל פתוח (חוץ מהגדרות/התקנה שכבר טופלו למעלה)
         if (cfg.optString("mode", "normal").equals("off")) return null;
@@ -121,6 +127,23 @@ final class Rules {
             if (Cfg.usedSec(c) >= allowed) return "נגמר זמן המסך להיום ⏱️";
         }
         return null;
+    }
+
+    /** אפליקציות כלים בסיסיות שלא צריך לחסום. */
+    static boolean isUtility(String pkg) {
+        String p = pkg.toLowerCase(java.util.Locale.US);
+        return p.contains("calculator") || p.endsWith(".calc")
+                || p.contains("deskclock") || p.endsWith(".clock") || p.contains("alarmclock")
+                || p.contains("gallery")
+                || p.contains("documentsui") || p.contains("filemanager") || p.contains("fileexplorer")
+                || p.endsWith(".files") || p.contains("apps.nbu.files")
+                || p.contains("bluetooth");
+    }
+
+    static boolean isBtScreen(String t) {
+        String s = t.toLowerCase(java.util.Locale.US);
+        return s.contains("bluetooth") || s.contains("בלוטות") || s.contains("connecteddevice")
+                || s.contains("מכשירים מחוברים") || s.contains("connected devices") || s.contains("pairing");
     }
 
     static boolean inWindow(JSONObject sched, long now) {

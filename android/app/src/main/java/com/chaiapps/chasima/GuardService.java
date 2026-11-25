@@ -115,6 +115,13 @@ public class GuardService extends AccessibilityService {
         account();
         current = pkg;
         currentCls = e.getClassName() == null ? "" : e.getClassName().toString();
+        // מסכי בלוטות' בהגדרות – מותרים (מזהים לפי שם המסך או הכותרת)
+        if (pkg.equals(Rules.SETTINGS)) {
+            StringBuilder t = new StringBuilder(currentCls);
+            try { for (CharSequence cs : e.getText()) t.append(' ').append(cs); } catch (Exception ignored) {}
+            if (e.getContentDescription() != null) t.append(' ').append(e.getContentDescription());
+            if (Rules.isBtScreen(t.toString())) currentCls = currentCls + "|bt";
+        }
         // גילוי האפליקציה המוסתרת: 10 לחיצות רצופות על ההגדרות
         if (changed && pkg.equals(Rules.SETTINGS)) {
             long now = System.currentTimeMillis();
