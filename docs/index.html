@@ -862,15 +862,28 @@ function copySunday(kind){ for(let d=1;d<7;d++) EDIT[kind][d]=JSON.parse(JSON.st
 
 /* ---------- צ'אט ---------- */
 function chatKeys(){ return Object.keys(S.chat||{}).sort(); }
+let chatHtml = "", chatLast = "";
 function renderChat(){
   const c=S.chat||{}, ks=chatKeys(), name=(S.cfg||{}).name||"הילד";
-  $("chatList").innerHTML = ks.length ? ks.map(k=>{
+  const html = ks.length ? ks.map(k=>{
     const m=c[k]||{}, t=m.t? new Date(m.t).toLocaleString("he-IL",{hour:"2-digit",minute:"2-digit",day:"numeric",month:"numeric"}) : "";
     return `<div class="msg ${m.from==="p"?"p":"k"}">${m.f?fileHtml(m.f):""}${esc(m.txt)}<small>${m.from==="p"?"אני":esc(name)} · ${t}</small></div>`;
   }).join("") : `<p class="muted" style="text-align:center;margin-top:30px">אין עדיין הודעות 💬<br>אפשר לכתוב ל${esc(name)} כאן</p>`;
   const onChat = !$("t-chat").classList.contains("hide");
-  if(onChat){ markRead(); scrollTo(0, document.body.scrollHeight); }
   updateChatBadge();
+  if(html === chatHtml) return;          // לא השתנה כלום – לא נוגעים במסך (בלי קפיצות)
+  // יורדים למטה רק כשהגיעה הודעה חדשה, ורק אם כבר היית למטה או שאתה כותב בשורת ההודעה
+  const nearBottom = (innerHeight + scrollY) >= document.body.scrollHeight - 160;
+  const typingElsewhere = document.activeElement && document.activeElement !== $("chatIn") && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  const isNew = (ks.at(-1) || "") !== chatLast;
+  const y = scrollY;
+  chatHtml = html; chatLast = ks.at(-1) || "";
+  $("chatList").innerHTML = html;
+  if(onChat){
+    markRead();
+    if(isNew && !typingElsewhere && (nearBottom || document.activeElement === $("chatIn"))) scrollTo(0, document.body.scrollHeight);
+    else scrollTo(0, y);
+  }
 }
 function markRead(){ const ks=chatKeys(); if(ks.length) localStorage.setItem("ch_read", ks.at(-1)); updateChatBadge(); }
 function updateChatBadge(){
