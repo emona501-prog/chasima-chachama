@@ -254,6 +254,8 @@ public class MainActivity extends Activity {
         Ui.text(this, c, (guardOn() ? "✅" : "❌") + " השומר  ·  " + (adminOn() ? "✅" : "❌") + " הגנה ממחיקה", 16, Color.WHITE, false);
         Ui.text(this, c, "גרסה " + BuildConfig.VERSION_NAME, 13, 0x99FFFFFF, false);
         final TextView upd = Ui.text(this, c, "", 14, 0xFFBBF7D0, false);
+        Ui.button(this, l, "🎛️ שליטה מהנגן (עובד גם בלי אינטרנט)", Ui.GREEN, v -> buildControl());
+        Ui.button(this, l, "📱 אישור וחסימת אפליקציות", Ui.PURPLE, v -> buildAppsLocal());
         Ui.button(this, l, "🔄 עדכן את האפליקציה לגרסה האחרונה", Ui.BLUE,
                 v -> Updater.run(this, upd::setText));
 
@@ -303,6 +305,138 @@ public class MainActivity extends Activity {
             parentOpen = false;
             build();
         });
+    }
+
+    /* ---------- שליטה מקומית בנגן (גם בלי טלפון ובלי אינטרנט) ---------- */
+    private void set(String sub, JSONObject body, String msg) {
+        Cfg.localSet(this, sub, body);
+        GuardService.localChanged();
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    private void setMode(String mode, int min, String msg) {
+        try {
+            set("", new JSONObject().put("mode", mode).put("until", min > 0 ? System.currentTimeMillis() + min * 60000L : 0), msg);
+        } catch (Exception ignored) {}
+        buildControl();
+    }
+
+    private LinearLayout row(LinearLayout parent) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
+        parent.addView(r, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return r;
+    }
+
+    private void small(LinearLayout r, String txt, int color, android.view.View.OnClickListener l) {
+        android.widget.Button b = Ui.button(this, r, txt, color, l);
+        b.setTextSize(14);
+        b.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        lp.setMargins(Ui.dp(this, 3), 0, Ui.dp(this, 3), Ui.dp(this, 8));
+        b.setLayoutParams(lp);
+    }
+
+    private EditText minutesBox(LinearLayout parent, String hint) {
+        EditText e = new EditText(this);
+        e.setHint(hint);
+        e.setInputType(InputType.TYPE_CLASS_NUMBER);
+        e.setTextColor(Color.WHITE);
+        e.setHintTextColor(0x88FFFFFF);
+        e.setGravity(Gravity.CENTER);
+        parent.addView(e, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return e;
+    }
+
+    private int num(EditText e) {
+        try { return Integer.parseInt(e.getText().toString().trim()); } catch (Exception x) { return 0; }
+    }
+
+    private void buildControl() {
+        LinearLayout l = Ui.screen(this);
+        Ui.text(this, l, "🎛️ שליטה מהנגן", 26, Color.WHITE, true);
+        Ui.text(this, l, "עובד גם בלי אינטרנט. כשהנגן יתחבר – השינויים יגיעו גם לטלפון של אבא.", 13, 0xCCFFFFFF, false);
+
+        JSONObject cfg = Cfg.cfg(this);
+        long now = System.currentTimeMillis();
+        String m = cfg.optString("mode", "normal");
+        String mode = Rules.mode(cfg, now);
+        String st = m.equals("off") ? "⏸️ ההגנה מושהית – הכול פתוח"
+                : mode.equals("lock") ? "🔒 נעול" : mode.equals("free") ? "🎉 זמן חופשי" : "✅ מצב רגיל";
+        long until = cfg.optLong("until", 0);
+        if (!mode.equals("normal") && until > now) st += " עד " + Timer.clock(until);
+        int pend = Cfg.pending(this).length();
+        LinearLayout c = Ui.card(this, l);
+        Ui.text(this, c, st, 20, Color.WHITE, true);
+        if (pend > 0) Ui.text(this, c, "⏳ " + pend + " שינויים ממתינים לאינטרנט", 13, 0xFFFDE68A, false);
+
+        if (m.equals("off")) Ui.button(this, l, "▶️ הפעל את ההגנה מחדש", Ui.GREEN, v -> setMode("normal", 0, "▶️ ההגנה חזרה"));
+        else Ui.button(this, l, "⏸️ השהה את כל ההגנה", Ui.RED, v -> setMode("off", 0, "⏸️ הכול פתוח"));
+        Ui.button(this, l, "↩️ מצב רגיל", Ui.BLUE, v -> setMode("normal", 0, "↩️ מצב רגיל"));
+
+        LinearLayout f = Ui.card(this, l);
+        Ui.text(this, f, "🎉 זמן חופשי (כל מה שמותר, גם מחוץ לשעות)", 15, Color.WHITE, true);
+        LinearLayout r1 = row(f);
+        small(r1, "15 ד׳", Ui.GREEN, v -> setMode("free", 15, "🎉 15 דקות"));
+        small(r1, "30 ד׳", Ui.GREEN, v -> setMode("free", 30, "🎉 30 דקות"));
+        small(r1, "שעה", Ui.GREEN, v -> setMode("free", 60, "🎉 שעה"));
+        small(r1, "שעתיים", Ui.GREEN, v -> setMode("free", 120, "🎉 שעתיים"));
+
+        LinearLayout k = Ui.card(this, l);
+        Ui.text(this, k, "🔒 נעילה", 15, Color.WHITE, true);
+        LinearLayout r2 = row(k);
+        small(r2, "עכשיו", Ui.RED, v -> setMode("lock", 0, "🔒 ננעל"));
+        small(r2, "30 ד׳", Ui.RED, v -> setMode("lock", 30, "🔒 30 דקות"));
+        small(r2, "שעה", Ui.RED, v -> setMode("lock", 60, "🔒 שעה"));
+        small(r2, "3 שעות", Ui.RED, v -> setMode("lock", 180, "🔒 3 שעות"));
+
+        LinearLayout cu = Ui.card(this, l);
+        Ui.text(this, cu, "✍️ זמן לבחירתך (בדקות)", 15, Color.WHITE, true);
+        final EditText mins = minutesBox(cu, "כמה דקות? למשל 45");
+        LinearLayout r3 = row(cu);
+        small(r3, "🎉 חופשי", Ui.GREEN, v -> { int n = num(mins); if (n > 0) setMode("free", n, "🎉 " + n + " דקות"); });
+        small(r3, "🔒 נעילה", Ui.RED, v -> { int n = num(mins); if (n > 0) setMode("lock", n, "🔒 " + n + " דקות"); });
+        small(r3, "🎁 בונוס", Ui.PURPLE, v -> {
+            int n = num(mins);
+            if (n <= 0) return;
+            try {
+                int cur = Rules.bonusToday(Cfg.cfg(this));
+                set("", new JSONObject().put("bonus", new JSONObject().put("d", Cfg.today()).put("m", cur + n)), "🎁 נוספו " + n + " דקות להיום");
+            } catch (Exception ignored) {}
+            buildControl();
+        });
+
+        Ui.button(this, l, "📱 אישור וחסימת אפליקציות", Ui.PURPLE, v -> buildAppsLocal());
+        Ui.button(this, l, "⬅️ חזרה לתפריט הורה", 0x55FFFFFF, v -> buildParent());
+    }
+
+    private void buildAppsLocal() {
+        LinearLayout l = Ui.screen(this);
+        Ui.text(this, l, "📱 אפליקציות בנגן", 26, Color.WHITE, true);
+        Ui.text(this, l, "🟦 מותר = בשעות המסך · 🟩 תמיד = גם מחוץ לשעות · 🟥 חסום", 13, 0xCCFFFFFF, false);
+        Ui.button(this, l, "⬅️ חזרה", 0x55FFFFFF, v -> buildParent());
+        JSONObject rules = Cfg.cfg(this).optJSONObject("rules");
+        java.util.List<String[]> apps = new java.util.ArrayList<>();
+        for (String pkg : Apps.launchable(this)) apps.add(new String[]{pkg, Apps.label(this, pkg)});
+        java.util.Collections.sort(apps, (a, b) -> a[1].compareToIgnoreCase(b[1]));
+        for (String[] a : apps) {
+            final String pkg = a[0], key = Cfg.key(pkg);
+            String r = rules == null ? "" : rules.optString(key, "");
+            String tag = r.equals("allow") ? "🟦 מותר" : r.equals("always") ? "🟩 תמיד" : r.equals("block") ? "🟥 חסום"
+                    : Rules.isUtility(pkg) ? "🧰 כלי – פתוח תמיד" : "⏳ לא אושר (חסום)";
+            LinearLayout c = Ui.card(this, l);
+            Ui.text(this, c, a[1] + "\n" + tag, 15, Color.WHITE, true);
+            LinearLayout rw = row(c);
+            small(rw, "מותר", Ui.BLUE, v -> rule(key, "allow"));
+            small(rw, "תמיד", Ui.GREEN, v -> rule(key, "always"));
+            small(rw, "חסום", Ui.RED, v -> rule(key, "block"));
+        }
+    }
+
+    private void rule(String key, String val) {
+        try { set("rules", new JSONObject().put(key, val), "✅ נשמר"); } catch (Exception ignored) {}
+        buildAppsLocal();
     }
 
     private void open(Intent i) {

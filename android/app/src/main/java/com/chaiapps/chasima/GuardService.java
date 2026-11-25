@@ -29,6 +29,14 @@ public class GuardService extends AccessibilityService {
 
     static volatile GuardService instance;
 
+    /** אחרי שינוי מקומי בנגן: לבדוק מחדש מיד ולנסות לשלוח לשרת. */
+    static void localChanged() {
+        GuardService g = instance;
+        if (g == null) return;
+        g.main.post(g::recheck);
+        try { g.io.execute(() -> Cfg.flushPending(g)); } catch (Exception ignored) {}
+    }
+
     private final Handler main = new Handler(Looper.getMainLooper());
     private final AtomicBoolean stop = new AtomicBoolean(false);
     private ExecutorService io;
@@ -396,6 +404,7 @@ public class GuardService extends AccessibilityService {
 
     private void pullCfg(String path) {
         try {
+            Cfg.flushPending(this);
             String json = Fb.get(path);
             String old = Cfg.p(this).getString("cfg", "");
             Cfg.saveCfg(this, json);
