@@ -76,6 +76,16 @@ main{padding:12px;max-width:620px;margin:auto}
 .prog{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22c55e,#fbbf24);border-radius:99px;transition:width .8s}
 
+/* הסולם נשאר למעלה בגלילה */
+.stick{position:sticky;top:6px;z-index:15;transition:padding .25s}
+.stick.mini{background:rgba(36,22,100,.94);box-shadow:0 10px 30px #0008}
+.mini .ladwrap{width:84px;min-width:0}
+.mini .side{gap:6px;justify-content:center}
+.mini .score{padding:6px}.mini .score .n{font-size:32px}.mini .score .of{font-size:11px}
+.mini .grade,.mini .stars,.mini .stepl{display:none}
+.mini .bubble{font-size:13px;min-height:0;padding:7px 10px}.mini .bubble:after{display:none}
+.mini .rescue{font-size:12px;padding:6px}
+.mini .ladwrap text{display:none}
 /* טבלת היום */
 .cat{margin-bottom:12px}
 .cat h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:6px}
@@ -201,7 +211,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <main>
     <div id="viewing" class="viewing hide"></div>
     <div id="dadMsg"></div>
-    <div class="card" style="padding:12px">
+    <div class="card stick" id="stageCard" style="padding:12px">
       <div class="stage">
         <div class="ladwrap" id="lad"></div>
         <div class="side">
@@ -951,6 +961,14 @@ function go(v){
 }
 function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(); }
 window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
+
+/* ---------- סולם מוקטן בגלילה ---------- */
+addEventListener("scroll", () => {
+  const c = $("stageCard"); if(!c || CUR !== "today") return;
+  const y = scrollY;
+  if(y > 330 && !c.classList.contains("mini")) c.classList.add("mini");
+  else if(y < 100 && c.classList.contains("mini")) c.classList.remove("mini");
+}, {passive:true});
 
 /* ======================= התחלה ======================= */
 new Image().src = "img/kid_top.png";
