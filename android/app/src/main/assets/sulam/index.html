@@ -92,14 +92,19 @@ main{padding:12px;max-width:620px;margin:auto}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
 /* הסולם נשאר למעלה בגלילה */
 .stick{position:sticky;top:6px;z-index:15;transition:padding .25s}
-.stick.mini{background:rgba(36,22,100,.94);box-shadow:0 10px 30px #0008}
-.mini .ladwrap{width:84px;min-width:0}
-.mini .side{gap:6px;justify-content:center}
-.mini .score{padding:6px}.mini .score .n{font-size:32px}.mini .score .of{font-size:11px}
+.stick.mini{background:rgba(36,22,100,.95);box-shadow:0 10px 30px #0008;padding:6px 10px!important;top:4px}
+.mini .stage{gap:10px;align-items:center}
+.mini .ladwrap{width:54px;min-width:0}
+.mini .kid.photo{width:36%}.mini .kid.photo.top{width:62%}.stick.mini{overflow:hidden}
+.mini .side{gap:5px;justify-content:center}
+.mini .score{display:flex;align-items:baseline;gap:6px;padding:0;background:none;border:0;text-align:start}
+.mini .score .n{font-size:30px}.mini .score .of{font-size:12px}
 .mini .grade,.mini .stars,.mini .stepl{display:none}
-.mini .bubble{font-size:13px;min-height:0;padding:7px 10px}.mini .bubble:after{display:none}
-.mini .rescue{font-size:12px;padding:6px}
-.mini .ladwrap text{display:none}
+.mini .bubble{font-size:12px;min-height:0;padding:5px 9px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;order:3}
+.mini .bubble:after{display:none}
+.mini .prog{height:8px;order:2}.mini .score{order:1}.mini .rescue{order:4;font-size:11px;padding:4px 6px;animation:none}
+.mini .ladwrap text,.mini .ladwrap circle{display:none}
+.mini .kid .alarm{font-size:13px;top:-12%;right:-30%}
 /* טבלת היום */
 .cat{margin-bottom:12px}
 .cat h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:6px}
