@@ -73,6 +73,7 @@ public class GuardService extends AccessibilityService {
             io.execute(() -> pullCfg("d/" + Cfg.deviceId(GuardService.this) + "/cfg"));
             io.execute(GuardService.this::pollChat);
             if (++sulN % 5 == 0) io.execute(GuardService.this::sulamTick);
+            if (sulN % 300 == 1) io.execute(GuardService.this::updTick);   // כל ~30 דקות
             maybeAutoUpdate();
             if (System.currentTimeMillis() - lastBeat > 45000) beat();
             main.postDelayed(this, 6000);
@@ -361,6 +362,20 @@ public class GuardService extends AccessibilityService {
     }
 
     private int sulN = 0;
+
+    /** 🆕 יש גרסה חדשה בגיטהאב? – התראה שלחיצה עליה מעדכנת מיד (פעם אחת לכל גרסה). */
+    private void updTick() {
+        try {
+            int latest = Updater.latestBuild();
+            if (latest <= 0) return;
+            android.content.SharedPreferences sp = Cfg.p(this);
+            sp.edit().putInt("updAvail", latest).apply();
+            if (latest > BuildConfig.VERSION_CODE && sp.getInt("updNotified", 0) != latest) {
+                sp.edit().putInt("updNotified", latest).apply();
+                Notify.update(this);
+            }
+        } catch (Exception ignored) {}
+    }
 
     /** 🪜 הסולם: התראה על הודעה/הצעה חדשה מאבא, ותזכורת יומית אם עוד לא סימן כלום. */
     private void sulamTick() {

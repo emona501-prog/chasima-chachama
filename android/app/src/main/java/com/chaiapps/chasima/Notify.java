@@ -35,6 +35,23 @@ final class Notify {
         try { nm.notify(id, b.build()); } catch (Exception ignored) {}
     }
 
+    /** יש גרסה חדשה – לחיצה מעדכנת מיד. */
+    static void update(Context c) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(new NotificationChannel("upd", "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH));
+        Intent i = new Intent(c, UpdateActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pi = PendingIntent.getActivity(c, 3, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, "upd") : new Notification.Builder(c);
+        b.setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle("🆕 יש גרסה חדשה!")
+                .setContentText("לחץ כאן כדי לעדכן עכשיו")
+                .setAutoCancel(true)
+                .setContentIntent(pi);
+        if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL);
+        try { nm.notify(1201, b.build()); } catch (Exception ignored) {}
+    }
+
     static void chat(Context c, String txt) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;

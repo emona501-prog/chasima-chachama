@@ -109,6 +109,10 @@ public class SulamActivity extends Activity {
         @JavascriptInterface
         public String ver() { return BuildConfig.VERSION_NAME; }
 
+        /** האם הנגן כבר יודע שיש גרסה חדשה בגיטהאב */
+        @JavascriptInterface
+        public boolean updAvail() { return Cfg.p(SulamActivity.this).getInt("updAvail", 0) > BuildConfig.VERSION_CODE; }
+
         /** אייקון "הסולם שלי" במסך הבית של הנגן (הנגן מציג חלון אישור) */
         @JavascriptInterface
         public boolean pinIcon() {

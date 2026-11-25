@@ -138,6 +138,14 @@ main{padding:12px;max-width:620px;margin:auto}
 .minil.hang .mk{animation:hang 1.4s infinite ease-in-out;transform-origin:50% 0}
 .minil.hang{border-color:#ef4444;box-shadow:0 0 0 2px #ef444488,0 10px 28px #000a}
 .minil .mp{height:6px;border-radius:9px;background:#ffffff1f;overflow:hidden;margin-top:6px}.minil .mp i{display:block;height:100%;background:linear-gradient(90deg,#22c55e,#fbbf24);transition:width .6s}
+.minil{touch-action:none}
+.minil.drag{transition:none}
+.mpill{position:fixed;right:0;top:120px;z-index:30;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-radius:16px 0 0 16px;padding:8px 8px 8px 10px;font-weight:900;font-size:13px;text-align:center;box-shadow:0 6px 18px #0008;
+  opacity:0;transform:translateX(60px);pointer-events:none;transition:opacity .3s,transform .35s cubic-bezier(.2,.9,.3,1.2);touch-action:none;line-height:1.2}
+.mpill.show{opacity:1;transform:none;pointer-events:auto}
+.mpill i{display:block;font-style:normal;font-size:20px}
+.updbar{background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:16px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;font-weight:800;box-shadow:0 6px 18px #16a34a55;animation:bpop .5s}
+.updbar span{flex:1}
 .mbub{position:fixed;top:16px;right:110px;max-width:56vw;background:#fff;color:#2b1b6b;font-weight:800;font-size:14px;padding:8px 12px;border-radius:14px;z-index:31;box-shadow:0 6px 18px #0006;opacity:0;transform:translateX(10px);transition:.3s;pointer-events:none}
 .mbub.show{opacity:1;transform:none}
 .minil .mw{position:absolute;top:-4px;left:-4px;font-size:14px;display:none}.minil.hang .mw{display:block}
@@ -266,6 +274,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   </div>
   <main>
     <div id="viewing" class="viewing hide"></div>
+    <div id="updBar"></div>
     <div id="dadMsg"></div>
     <div id="dadTip"></div>
     <div class="card" id="stageCard" style="padding:12px">
@@ -440,7 +449,8 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
 </nav>
 <div class="intro hide" id="intro" onclick="introEnd()"><video id="introV" playsinline preload="auto" src="intro.mp4"></video><button class="skip" onclick="event.stopPropagation();introEnd()">דלג ⏭</button></div>
 <div class="mbub" id="mBub"></div>
-<div class="minil" id="miniLad" onclick="scrollTo({top:0,behavior:'smooth'})"></div>
+<div class="minil" id="miniLad"></div>
+<div class="mpill" id="miniPill"><i>🪜</i><span id="mpN">0</span></div>
 <div id="modal"></div>
 <canvas id="fx"></canvas>
 <div class="toast" id="toast"></div>
@@ -835,7 +845,7 @@ function renderTable(){
   $("table").innerHTML = h;
 }
 function extraCats(){ return []; }
-function renderToday(){ renderHeader(); renderTable(); showTip(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
+function renderToday(){ renderHeader(); renderTable(); showTip(); checkUpd(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
 
 /* ---------- סימון ---------- */
 function setVal(id, val, srcEl){
@@ -1216,7 +1226,11 @@ function renderSet(){
   try{ $("remT").value = NB ? NB.getRem() : (LS.get("rem")||""); }catch(e){}
   syncInfo();
 }
-function doUpd(){ if(!NB || !NB.update) return toast("העדכון עובד רק בנגן"); $("updTxt").textContent = "⏳ בודק…"; try{ NB.update(); }catch(e){ $("updTxt").textContent = "❌ לא הצלחתי"; } }
+function checkUpd(){
+  let a = false; try{ a = NB && NB.updAvail && NB.updAvail(); }catch(e){}
+  $("updBar").innerHTML = a ? `<div class="updbar"><span>🆕 יש גרסה חדשה לסולם!</span><button class="y sm" onclick="doUpd()">🔄 עדכן עכשיו</button></div>` : "";
+}
+function doUpd(){ if(!NB || !NB.update) return toast("העדכון עובד רק בנגן"); if($("updTxt")) $("updTxt").textContent = "⏳ בודק…"; toast("⏳ מוריד את הגרסה החדשה…"); try{ NB.update(); }catch(e){ $("updTxt").textContent = "❌ לא הצלחתי"; } }
 window.onUpd = (m) => { const e = $("updTxt"); if(e) e.textContent = m; toast(m); };
 function pinIcon(){ let ok = false; try{ ok = NB && NB.pinIcon(); }catch(e){} toast(ok ? "👑 לחץ \"הוסף\" בחלון שקפץ" : "הנגן לא מאפשר – גרור את האייקון מרשימת האפליקציות"); }
 function saveRem(){ const v = $("remT").value; try{ NB ? NB.setRem(v) : LS.set("rem", v); }catch(e){} toast(v ? "⏰ תזכורת כל יום ב-"+v : "התזכורת בוטלה"); }
@@ -1353,7 +1367,7 @@ function miniInit(){
 }
 function renderMini(st){
   if(!$("mN")) return;
-  $("mN").textContent = st.total; $("mO").textContent = st.top ? "🏆 בפסגה!" : `מתוך ${st.target}`;
+  $("mN").textContent = st.total; $("mpN").textContent = st.total; $("mO").textContent = st.top ? "🏆 בפסגה!" : `מתוך ${st.target}`;
   $("mP").style.width = st.pct + "%";
   for(let k=1;k<=STEPS;k++){ const brk = st.brk.some(b=>stepFor(b.need)===k); const e=$("mr"+k);
     e.setAttribute("stroke", brk ? "#ef4444" : k<=st.step ? "#fbbf24" : "#d6a35c"); e.setAttribute("stroke-dasharray", brk ? "6 5" : ""); }
@@ -1365,14 +1379,45 @@ function renderMini(st){
   $("mK").classList.toggle("top", st.top);
   $("miniLad").classList.toggle("hang", st.brk.length > 0);
 }
-// הסולם הקטן מופיע רק כשהסולם הגדול כבר לא נראה במסך
+// הסולם הקטן מופיע רק כשהסולם הגדול כבר לא נראה במסך.
+// אפשר לגרור אותו למעלה/למטה, להסיט ימינה כדי למזער ללשונית קטנה, וללחוץ על הלשונית כדי להחזיר.
+function miniState(){ return LS.get("miniState") || "open"; }
+function miniTop(){ const t = +LS.get("miniTop"); return t > 0 ? Math.min(t, innerHeight - 260) : 8; }
 function miniScroll(){
   const c = $("stageCard"); let gone = false;
   if(c && CUR==="today"){ const r = c.getBoundingClientRect(); gone = r.bottom < 70; }
-  $("miniLad").classList.toggle("show", gone);
+  const open = miniState() === "open";
+  $("miniLad").style.top = miniTop() + "px";
+  $("miniPill").style.top = (miniTop() + 40) + "px";
+  $("miniLad").classList.toggle("show", gone && open);
+  $("miniPill").classList.toggle("show", gone && !open);
 }
 addEventListener("scroll", miniScroll, {passive:true});
 addEventListener("resize", miniScroll);
+function dragable(el, onTap, onSwipe){
+  let sx, sy, st, moved = false, id = null;
+  el.addEventListener("pointerdown", e => { id = e.pointerId; sx = e.clientX; sy = e.clientY; st = miniTop(); moved = false; el.classList.add("drag"); try{ el.setPointerCapture(id); }catch(x){} });
+  el.addEventListener("pointermove", e => {
+    if(id !== e.pointerId) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+    if(!moved) return;
+    const top = Math.max(4, Math.min(innerHeight - 260, st + dy));
+    el.style.top = (el.id === "miniPill" ? top + 40 : top) + "px";
+    el.style.transform = `translateX(${el.id === "miniPill" ? Math.min(0, dx) : Math.max(0, dx)}px)`;
+    el._dx = dx; el._top = top;
+  });
+  const end = e => {
+    if(id === null) return; id = null; el.classList.remove("drag"); el.style.transform = "";
+    if(!moved){ onTap(); return; }
+    if(el._top) LS.set("miniTop", Math.round(el._top));
+    onSwipe(el._dx || 0);
+    el._dx = 0; miniScroll();
+  };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+}
+dragable($("miniLad"), () => scrollTo({top:0, behavior:"smooth"}), dx => { if(dx > 45){ LS.set("miniState","min"); toast("🪜 הסולם מוזער – לחץ על הלשונית כדי להחזיר"); } });
+dragable($("miniPill"), () => { LS.set("miniState","open"); miniScroll(); }, dx => { if(dx < -25){ LS.set("miniState","open"); } });
 
 /* ======================= התחלה ======================= */
 new Image().src = "img/kid_top.png";

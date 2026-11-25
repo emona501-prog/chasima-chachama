@@ -32,7 +32,7 @@ final class Updater {
     }
 
     /** מספר ה-build האחרון בגיטהאב, או -1 אם נכשל. */
-    private static int latestBuild() {
+    static int latestBuild() {
         try {
             HttpURLConnection c = (HttpURLConnection) new URL(API_LATEST).openConnection();
             c.setInstanceFollowRedirects(true);
