@@ -212,6 +212,9 @@ public class MainActivity extends Activity {
                 v -> startActivity(new Intent(this, SulamActivity.class)));
         Ui.button(this, l, "💬 הודעות עם אבא", Ui.GREEN,
                 v -> startActivity(new Intent(this, ChatActivity.class)));
+        // 🔄 עדכון האפליקציה – גם הילד יכול (מתקין רק גרסה רשמית וחתומה מגיטהאב)
+        final TextView kidUpd = Ui.text(this, l, "גרסה " + BuildConfig.VERSION_NAME, 13, 0x99FFFFFF, false);
+        Ui.button(this, l, "🔄 עדכון האפליקציה", Ui.BLUE, v -> Updater.run(this, kidUpd::setText));
 
         LinearLayout c = Ui.card(this, l);
         Ui.text(this, c, "כניסת הורה", 16, Color.WHITE, true);
