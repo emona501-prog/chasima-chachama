@@ -104,6 +104,10 @@ main{padding:12px;max-width:620px;margin:auto}
 .chatbar{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));display:flex;gap:6px;padding:8px 10px;background:rgba(20,12,60,.97);border-top:1px solid var(--line);z-index:19;align-items:flex-end}
 .chatbar textarea{flex:1;min-width:0;resize:none;max-height:110px;padding:10px 12px;border-radius:18px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:#fff;font-size:15px}
 .chatbar button{flex:none;width:46px;height:46px;padding:0;border-radius:50%;font-size:20px}
+.pend{position:fixed;left:0;right:0;bottom:calc(128px + env(safe-area-inset-bottom));z-index:19;display:flex;gap:10px;align-items:center;padding:8px 10px;background:#2a1f70;border-top:1px solid var(--line)}
+.pend img{width:56px;height:56px;object-fit:cover;border-radius:12px;flex:none}.pend .pi{width:56px;height:56px;border-radius:12px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:28px;flex:none}
+.pend .pn{flex:1;min-width:0;font-size:13px;overflow:hidden}.pend .pn b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pend .go{flex:none;padding:10px 16px;border-radius:14px;font-size:16px;font-weight:800;background:#22c55e;color:#fff;border:0}.pend .x{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff}
 .upl{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:90;background:#111827ee;border:1px solid var(--line);border-radius:14px;padding:8px 14px;font-size:13px;font-weight:700}
 .lb{position:fixed;inset:0;background:#000e;z-index:95;display:flex;align-items:center;justify-content:center}
 .lb img{max-width:100%;max-height:100%}
@@ -372,6 +376,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
   <div class="dad" style="margin-bottom:6px"><div class="av"><img src="img/dad.png" onerror="this.outerHTML='👨'" alt=""></div><div class="say"><b>💬 הודעות עם אבא</b>אפשר לשלוח גם תמונות, שירים וקבצים 📎</div></div>
   <div class="chat" id="chatList"></div>
 </main>
+<div class="pend hide" id="chatPend"></div>
 <div class="chatbar"><button class="ghost" onclick="$('chatFile').click()" title="צירוף">📎</button><textarea id="chatIn" rows="1" placeholder="כתוב לאבא…" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea><button class="g" onclick="chatSend()">➤</button></div>
 <input type="file" id="chatFile" class="hide" onchange="chatAttach(this)">
 </div>
@@ -1412,10 +1417,20 @@ async function fileSave(k){
 function upl(t){ let e = $("uplBox"); if(!t){ if(e) e.remove(); return; } if(!e){ e = document.createElement("div"); e.id = "uplBox"; e.className = "upl"; document.body.appendChild(e); } e.textContent = t; }
 function readUrl(file){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
 function shrink(url, max, q){ return new Promise(res => { const im = new Image(); im.onload = () => { const s = Math.min(1, max/Math.max(im.width, im.height)); const c = document.createElement("canvas"); c.width = Math.round(im.width*s); c.height = Math.round(im.height*s); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL("image/jpeg", q)); }; im.onerror = () => res(null); im.src = url; }); }
+// 📎 בוחרים קובץ → מופיעה תצוגה מקדימה עם כפתור "שלח לאבא" גדול. רק בלחיצה זה נשלח.
+var PEND = null;
 async function chatAttach(inp){
   const f = inp.files && inp.files[0]; inp.value = ""; if(!f) return;
   if(f.size > FMAX) return toast("הקובץ גדול מדי (עד 20MB)");
   if(!NB) return toast("שליחת קבצים עובדת רק בנגן");
+  PEND = f;
+  const box = $("chatPend"), t = f.type || "", isImg = t.startsWith("image/");
+  const ic = t.startsWith("audio/") ? "🎵" : t.startsWith("video/") ? "🎬" : t.includes("pdf") ? "📄" : "📎";
+  box.innerHTML = `${isImg ? `<img src="${URL.createObjectURL(f)}">` : `<div class="pi">${ic}</div>`}<div class="pn"><b>${esc(f.name || "קובץ")}</b><span style="opacity:.75">${fsize(f.size)} · אפשר לכתוב גם מילים</span></div><button class="go" onclick="chatSend()">שלח ➤</button><button class="x" onclick="chatUnpick()">✕</button>`;
+  box.classList.remove("hide");
+}
+function chatUnpick(){ PEND = null; $("chatPend").classList.add("hide"); $("chatPend").innerHTML = ""; }
+async function chatSendFile(f){
   try{
     upl("⏳ מכין…");
     let url = await readUrl(f), mime = f.type || "application/octet-stream", name = f.name || "file", th = "";
@@ -1424,7 +1439,7 @@ async function chatAttach(inp){
     const size = Math.round(b64.length * 3 / 4);
     await fbD("PUT", "files/"+k, {n: name, m: mime, z: size, c: n, t: Date.now(), from: "k"});
     for(let i=0;i<n;i++){ await fbD("PUT", `fc/${k}/${i}`, b64.slice(i*CHUNK, (i+1)*CHUNK)); upl(`📤 שולח… ${Math.round((i+1)/n*100)}%`); }
-    const cap = $("chatIn").value.trim(); $("chatIn").value = "";
+    const cap = $("chatIn").value.trim(); $("chatIn").value = ""; $("chatIn").style.height = "auto";
     await fbD("POST", "chat", {from: "k", txt: cap, f: {k, n: name, m: mime, z: size, th}, t: {".sv": "timestamp"}});
     upl(""); toast("✅ נשלח לאבא"); chatLoad(true); autoClean();
   }catch(e){ upl(""); toast("❌ השליחה נכשלה – בדוק אינטרנט"); }
@@ -1444,6 +1459,7 @@ async function autoClean(){
   }catch(e){}
 }
 async function chatSend(){
+  if(PEND){ const f = PEND; chatUnpick(); return chatSendFile(f); }
   const t = $("chatIn").value.trim(); if(!t) return;
   $("chatIn").value = ""; $("chatIn").style.height = "auto";
   try{ await fbD("POST", "chat", {from: "k", txt: t, t: {".sv": "timestamp"}}); chatLoad(true); }
