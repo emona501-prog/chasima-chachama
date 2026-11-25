@@ -308,6 +308,12 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <button class="r sm" style="width:100%;margin-top:10px" onclick="blockBrowsers()">🚫 חסום את כל הדפדפנים בנגן</button>
         <p class="muted" style="margin-top:6px">אחרי חסימת הדפדפנים, הילד גולש רק דרך "דפדפן בטוח" ומבקש ממך כל אתר</p>
       </div>
+      <div class="card" id="netCard">
+        <div class="row">
+          <div style="flex:1"><b>📶 התראה כשהנגן מתחבר / מתנתק מהאינטרנט</b><div class="muted" id="netNote">התראה קופצת לטלפון שלך (באפליקציה המותקנת)</div></div>
+          <label class="sw"><input type="checkbox" id="netOn" onchange="setNetAlerts()"><i></i></label>
+        </div>
+      </div>
       <div class="card">
         <h2>🔑 קוד הורה</h2>
         <input id="pin2" inputmode="numeric" maxlength="8" placeholder="קוד חדש">
@@ -447,6 +453,7 @@ function start(){
   setInterval(pollAll, 3000);   // מושכים נתונים כל 3 שניות
   $("devId").textContent = "מזהה נגן: " + ID;
   setTimeout(()=>{ renderStatus(); pollAll(); }, 1500);
+  try{ initNet(); }catch(e){}
 }
 let polling=false, pollN=0;
 async function pollAll(force){
@@ -843,6 +850,16 @@ function tab(t){
   if(t==="chat"){ markRead(); setTimeout(()=>scrollTo(0, document.body.scrollHeight),50); return; }
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));
   scrollTo(0,0);
+}
+
+/* ---------- התראות חיבור ---------- */
+function initNet(){
+  const has = (()=>{ try{ return !!(window.ChasimaApp && ChasimaApp.getNetAlerts); }catch(e){ return false; } })();
+  if(!has){ $("netOn").disabled = true; $("netNote").textContent = "זמין רק באפליקציה המותקנת (לא ב־Chrome)"; return; }
+  $("netOn").checked = ChasimaApp.getNetAlerts();
+}
+function setNetAlerts(){
+  try{ ChasimaApp.setNetAlerts($("netOn").checked); toast($("netOn").checked ? "📶 תקבל התראה כשהנגן מתחבר/מתנתק" : "ההתראות על חיבור כבויות"); }catch(e){}
 }
 
 /* ---------- בדיקת חיבור ---------- */

@@ -58,6 +58,37 @@ public class AlertService extends Service {
         new Thread(() -> loop(Fb.url("d/" + id + "/chat") + Fb.lastQ(1), this::onChat)).start();
         new Thread(() -> loop(Fb.url("d/" + id + "/st/alert"), this::onAlert)).start();
         new Thread(() -> loop(Fb.url("d/" + id + "/photo/t"), this::onPhoto)).start();
+        new Thread(this::netLoop).start();
+    }
+
+    // ---------- הנגן התחבר / התנתק מהאינטרנט ----------
+    private void netLoop() {
+        while (!stop.get()) {
+            try {
+                if (p().getBoolean("netAlerts", true)) {
+                    String r = Fb.get("d/" + id + "/st/seen");
+                    long seen = 0;
+                    try { seen = Long.parseLong(r.trim()); } catch (Exception ignored) {}
+                    long now = System.currentTimeMillis();
+                    // הנגן מדווח כל ~45 שניות. 5 דקות בלי דיווח = מנותק
+                    String state = seen > 0 && now - seen < 5 * 60000 ? "on" : "off";
+                    String last = p().getString("netState", "");
+                    if (!state.equals(last)) {
+                        p().edit().putString("netState", state).apply();
+                        if (!last.isEmpty()) {
+                            String who = kid();
+                            String t = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date());
+                            if (state.equals("on")) show("🟢 הנגן של " + who + " התחבר לאינטרנט", "בשעה " + t, "home");
+                            else show("🔴 הנגן של " + who + " התנתק מהאינטרנט", "אין דיווח מהנגן מאז " +
+                                    new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date(seen)), "home");
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // אין אינטרנט בטלפון שלך – לא מסיקים כלום על הנגן
+            }
+            try { Thread.sleep(60000); } catch (InterruptedException e) { return; }
+        }
     }
 
     @Override

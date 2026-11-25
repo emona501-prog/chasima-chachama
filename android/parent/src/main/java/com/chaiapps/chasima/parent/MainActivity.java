@@ -140,6 +140,12 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean getNetAlerts() { return prefs(MainActivity.this).getBoolean("netAlerts", true); }
+
+        @JavascriptInterface
+        public void setNetAlerts(boolean on) { prefs(MainActivity.this).edit().putBoolean("netAlerts", on).putString("netState", "").apply(); }
+
+        @JavascriptInterface
         public String getDevice() {
             return prefs(MainActivity.this).getString("id", "");
         }
