@@ -302,10 +302,12 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
 <script>
 /* ======================= בסיס ======================= */
 const $ = id => document.getElementById(id);
+const LS = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} } };
+
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const NB = (()=>{ try{ return window.Sulam || null; }catch(e){ return null; } })();   // הגשר לאנדרואיד
 const ID = NB ? NB.id() : "demo";
-const KID = (NB && NB.kidName && NB.kidName()) || localStorage.getItem("kid") || "נחמן אשר";
+const KID = (NB && NB.kidName && NB.kidName()) || LS.get("kid") || "נחמן אשר";
 const FIRST = KID.split(" ")[0];
 const nik = s => String(s||"").replace(/[֑-ׇ]/g, "");
 const pad = n => String(n).padStart(2,"0");
@@ -363,14 +365,14 @@ const STEPS = 10;
 let D = load();
 function load(){
   let o = {};
-  try{ o = JSON.parse(localStorage.getItem("sulam")||"{}"); }catch(e){}
+  try{ o = JSON.parse(LS.get("sulam")||"{}"); }catch(e){}
   if(!o.set) o.set = DEF_SET();
   o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {};
   return o;
 }
-function save(){ try{ localStorage.setItem("sulam", JSON.stringify(D)); }catch(e){} }
-const L = { voice: localStorage.getItem("voice")!=="false", sfx: localStorage.getItem("sfx")!=="false" };
-function setLocal(k,v){ L[k]=v; localStorage.setItem(k, v); }
+function save(){ try{ LS.set("sulam", JSON.stringify(D)); }catch(e){} }
+const L = { voice: LS.get("voice")!=="false", sfx: LS.get("sfx")!=="false" };
+function setLocal(k,v){ L[k]=v; LS.set(k, v); }
 
 /* ---------- שרת (דרך הגשר) – עם תור שליחה שעובד גם בלי אינטרנט ---------- */
 const CB = {}; let cbN = 0;
@@ -383,17 +385,17 @@ function fb(method, path, body){
     NB.http(id, method, `d/${ID}/s/${path}`, body===undefined ? "" : JSON.stringify(body));
   }).then(t => t ? JSON.parse(t) : null);
 }
-let Q = []; try{ Q = JSON.parse(localStorage.getItem("sq")||"[]"); }catch(e){}
+let Q = []; try{ Q = JSON.parse(LS.get("sq")||"[]"); }catch(e){}
 function enqueue(method, path, body){
   Q = Q.filter(q => !(q[0]==="PUT" && method==="PUT" && q[1]===path));   // רק הגרסה האחרונה של אותו נתיב
-  Q.push([method, path, body]); localStorage.setItem("sq", JSON.stringify(Q)); flush();
+  Q.push([method, path, body]); LS.set("sq", JSON.stringify(Q)); flush();
 }
 let flushing = false, online = false;
 async function flush(){
   if(flushing || !NB) return; flushing = true;
   while(Q.length){
     const [m,p,b] = Q[0];
-    try{ await fb(m,p,b); online = true; Q.shift(); localStorage.setItem("sq", JSON.stringify(Q)); }
+    try{ await fb(m,p,b); online = true; Q.shift(); LS.set("sq", JSON.stringify(Q)); }
     catch(e){ online = false; break; }
   }
   flushing = false; syncInfo();
@@ -514,7 +516,8 @@ function say(txt, cat){
   if(cat && VOICES && VOICES[cat] && VOICES[cat].length){
     try{ if(curAudio) curAudio.pause(); curAudio = new Audio("voice/"+rnd(VOICES[cat])); curAudio.play(); return; }catch(e){}
   }
-  try{ if(NB) NB.say(String(txt).replace(/[^֐-׿\s!?,.'"״׳0-9-]/g, " ")); }catch(e){}
+  const clean = String(txt).replace(/[^\u0590-\u05FF\s!?,.'"״׳0-9-]/g, " ");
+  try{ if(NB) NB.say(clean); else if(window.speechSynthesis){ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(clean); u.lang = "he-IL"; speechSynthesis.speak(u); } }catch(e){}
 }
 function praise(cat){
   const t = rnd(PRAISE[cat] || PRAISE.small);
@@ -731,7 +734,7 @@ function flyPlus(n, el){
 }
 
 /* ======================= הודעות מאבא ======================= */
-function seenMsgs(){ try{ return JSON.parse(localStorage.getItem("seen")||"{}"); }catch(e){ return {}; } }
+function seenMsgs(){ try{ return JSON.parse(LS.get("seen")||"{}"); }catch(e){ return {}; } }
 function showDadMsg(){
   const ks = Object.keys(D.msg||{}).sort(); if(!ks.length){ $("dadMsg").innerHTML=""; return; }
   const seen = seenMsgs();
@@ -740,7 +743,7 @@ function showDadMsg(){
   $("dadMsg").innerHTML = `<div class="msgcard" onclick="say(D.msg['${last}'].txt,'')"><div class="e">💌</div><div><b>הודעה מאבא</b>${esc(m.txt)}</div></div>`;
   if(fresh.length){
     const k = fresh.at(-1), mm = D.msg[k];
-    for(const x of fresh) seen[x] = 1; localStorage.setItem("seen", JSON.stringify(seen));
+    for(const x of fresh) seen[x] = 1; LS.set("seen", JSON.stringify(seen));
     sparkle(); showModal("💌", "הודעה מאבא", esc(mm.txt), "❤️ תודה אבא", "letter");
     say(mm.txt, "");
     for(const x of fresh) enqueue("PATCH", "msg/"+x, {seen: Date.now()});
@@ -918,7 +921,7 @@ function modalForm(title, inner, cb){
   modalCb = cb;
   $("modal").innerHTML = `<div class="modal"><div class="box"><h2>${title}</h2>${inner}<button class="g" style="width:100%" onclick="const c=modalCb;closeModal();c&&c()">שמירה</button><button class="ghost" style="width:100%;margin-top:8px" onclick="closeModal()">ביטול</button></div></div>`;
 }
-function closeModal(){ $("modal").innerHTML = ""; if(MQ.length) setTimeout(()=>showModal(...MQ.shift()), 250); }
+function closeModal(){ $("modal").innerHTML = ""; if(MQ.length) setTimeout(()=>{ if(MQ.length && !$("modal").innerHTML) showModal(...MQ.shift()); }, 250); }
 const cv = $("fx"), cx = cv.getContext("2d"); let parts = [], fxOn = false;
 function resizeFx(){ cv.width = innerWidth; cv.height = innerHeight; } resizeFx(); addEventListener("resize", resizeFx);
 function burst(n, opts){
@@ -955,7 +958,7 @@ $("lad").innerHTML = ladderSvg();
 renderToday(); syncInfo();
 setTimeout(() => {
   const t = dk(new Date());
-  if(localStorage.getItem("greet") !== t){ localStorage.setItem("greet", t); praise("morning"); }
+  if(LS.get("greet") !== t){ LS.set("greet", t); praise("morning"); }
   else praise(calc(t).raw ? "big" : "morning");
 }, 700);
 pull(true);
