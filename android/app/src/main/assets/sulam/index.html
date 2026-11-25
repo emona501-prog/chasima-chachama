@@ -49,6 +49,8 @@ main{padding:12px;max-width:620px;margin:auto}
 .kid{position:absolute;left:50%;width:56%;transform:translateX(-50%);transition:bottom 1.1s cubic-bezier(.5,1.6,.4,1);z-index:2;pointer-events:none}
 .kid img,.kid svg{width:100%;display:block;filter:drop-shadow(0 6px 8px #0007)}
 .kid.photo{width:40%}
+.kid.photo.top{width:62%}
+.box .e img{height:170px;display:block;margin:auto;filter:drop-shadow(0 6px 10px #0008)}
 .kid.climb .kbody{animation:climb .28s 4 alternate ease-in-out}
 @keyframes climb{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-6%) rotate(3deg)}}
 .kid.hang .kbody{animation:hang 1.4s infinite ease-in-out;transform-origin:50% 0}
@@ -602,6 +604,9 @@ function placeKid(st, anim){
     $("ck"+i).classList.toggle("on", isBrk);
   }
   kid.classList.toggle("hang", st.brk.length > 0);
+  // בראש הסולם – התמונה של הניצחון
+  const im = kid.querySelector("img");
+  if(im){ const want = st.top ? "img/kid_top.png" : "img/kid.png"; if(!im.src.endsWith(want)){ im.onerror = null; im.src = want; } kid.classList.toggle("top", st.top); }
   if(anim){ kid.classList.remove("climb","joy"); void kid.offsetWidth; kid.classList.add(anim); setTimeout(()=>kid.classList.remove(anim), 3200); }
 }
 const stepFor = pts => Math.min(STEPS, Math.max(1, Math.floor(pts / (Math.max(10,+D.set.target||150)/STEPS)) || 1));
@@ -701,7 +706,7 @@ function setVal(id, val, srcEl){
   if(newBrk){ anim = "hang"; SFX.down(); vib(400); praise("brk"); }
   else if(fixed){ anim = "joy"; SFX.fix(); praise("fix"); sparkle(); }
   else if(st.top && !before.top){ anim = "joy"; SFX.top(); vib(200); celebrate(); praise("top");
-    setTimeout(()=>showModal("🏆", "הגעת לראש הסולם!", `${esc(FIRST)}, אתה אלוף!<br>קיבלת בונוס של <b>${D.set.bonus}</b> נקודות 🎉`, "יששש! 💪"), 900);
+    setTimeout(()=>showModal('<img src="img/kid_top.png" onerror="this.outerHTML=\'🏆\'">', "הגעת לראש הסולם!", `${esc(FIRST)}, אתה אלוף!<br>קיבלת בונוס של <b>${D.set.bonus}</b> נקודות 🎉`, "יששש! 💪"), 900);
     tellDad(`🏆 ${KID} הגיע היום לראש הסולם! (${st.total} נקודות)`); }
   else if(st.step > before.step){ anim = "climb"; SFX.step(); praise("step"); }
   else if(diff > 0){ SFX.ding(); if(Math.random() < .55) praise(diff >= 15 ? "big" : "small"); }
@@ -945,6 +950,7 @@ function renderAll(){ if(CUR==="today") renderToday(); else go(CUR); renderCoin(
 window.onBack = () => { if($("modal").innerHTML){ closeModal(); return true; } if(CUR!=="today"){ go("today"); return true; } if(VIEW!==dk(new Date())){ VIEW=dk(new Date()); renderToday(); return true; } return false; };
 
 /* ======================= התחלה ======================= */
+new Image().src = "img/kid_top.png";
 $("lad").innerHTML = ladderSvg();
 renderToday(); syncInfo();
 setTimeout(() => {
