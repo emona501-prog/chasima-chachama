@@ -60,6 +60,13 @@ final class Fb {
         return "?orderBy=%22%24key%22&limitToLast=" + n;
     }
 
+    /** בקשה כללית. הנתיב יכול לכלול שאילתה (?orderBy=...). */
+    static String raw(String method, String path, String body) throws IOException {
+        int q = path.indexOf('?');
+        String full = q < 0 ? url(path) : url(path.substring(0, q)) + path.substring(q);
+        return callUrl(method, full, body);
+    }
+
     static String url(String path) {
         return base() + "/" + path + ".json";
     }

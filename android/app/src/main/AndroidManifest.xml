@@ -24,6 +24,9 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.HOME" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
     </queries>
 
     <application
@@ -75,6 +78,22 @@
             android:icon="@mipmap/ic_launcher"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:taskAffinity="com.chaiapps.chasima.web">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SulamActivity"
+            android:exported="true"
+            android:label="הסולם שלי"
+            android:icon="@mipmap/ic_sulam"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
+            android:taskAffinity="com.chaiapps.chasima.sulam">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
