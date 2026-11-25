@@ -634,6 +634,11 @@ function renderReqs(){
     <div class="app">${appIcon(k)}
       <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
     </div>${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
+    ${r[k].sys ? `<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 10px">
+      <button class="y sm" onclick="sysOpen('${k}',10)">⚙️ פתח ל־10 ד׳</button>
+      <button class="y sm" onclick="sysOpen('${k}',30)">⚙️ פתח ל־30 ד׳</button>
+      <button class="r sm" onclick="answer('${k}','block')">✖️ דחה</button>
+    </div>` : `
     <div class="grid2" style="grid-template-columns:1fr 1fr;margin:6px 0 4px">
       <button class="y sm" onclick="openNow('${k}',30)">🔓 פתח עכשיו ל־30 ד׳</button>
       <button class="y sm" onclick="openNow('${k}',60)">🔓 פתח עכשיו לשעה</button>
@@ -642,7 +647,7 @@ function renderReqs(){
       <button class="sm" onclick="answer('${k}','allow')">✔️ מותר</button>
       <button class="g sm" onclick="answer('${k}','always')">⭐ תמיד</button>
       <button class="r sm" onclick="answer('${k}','block')">✖️ דחה</button>
-    </div>`).join("") : `<p class="muted">אין בקשות חדשות 👍</p>`;
+    </div>`}`).join("") : `<p class="muted">אין בקשות חדשות 👍</p>`;
 }
 function timeWhy(w){ return /שעות|זמן המסך|נעול|מנוחה/.test(w||""); }
 async function answer(k, val){
@@ -654,6 +659,14 @@ async function answer(k, val){
     await fb("DELETE", `d/${ID}/req/${k}`);
     if(val==="allow" && timeWhy(why)) toast("✅ אושר – אבל ייפתח רק בשעות המסך. לפתיחה מיד: ⭐ תמיד או 🔓 פתח עכשיו");
     else toast(val==="block" ? "✖️ נדחה" : "✅ אושר – נפתח בנגן");
+  }catch(e){ toast("❌ "+e.message); }
+}
+async function sysOpen(k, min){
+  if(S.req) { delete S.req[k]; renderReqs(); }
+  try{
+    await fb("PATCH", `d/${ID}/cfg`, {settingsUntil: Date.now()+min*60000});
+    await fb("DELETE", `d/${ID}/req/${k}`);
+    toast(`⚙️ הגדרות והתקנת אפליקציות פתוחות ל־${min} דק׳`);
   }catch(e){ toast("❌ "+e.message); }
 }
 async function openNow(k, min){

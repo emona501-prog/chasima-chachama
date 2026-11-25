@@ -108,8 +108,8 @@ public class BlockActivity extends Activity {
             Ui.text(this, c, "💬 " + msg, 17, Color.WHITE, false);
         }
 
-        boolean canAsk = !Rules.SETTINGS.equals(pkg) && !Rules.isInstaller(pkg);
-        if (canAsk) {
+        final boolean sys = Rules.SETTINGS.equals(pkg) || Rules.isInstaller(pkg);
+        {
             final EditText note = new EditText(this);
             note.setHint("✍️ הודעה לאבא (לא חובה) – למה אתה צריך?");
             note.setTextColor(Color.WHITE);
@@ -146,6 +146,48 @@ public class BlockActivity extends Activity {
         Ui.button(this, l, "💬 הודעות עם אבא", 0x55FFFFFF,
                 v -> startActivity(new Intent(this, ChatActivity.class)));
         Ui.button(this, l, "🏠 חזרה למסך הבית", Ui.BLUE, v -> goHome());
+
+        // פתיחה במקום עם קוד הורה (עובד גם בלי אינטרנט)
+        final LinearLayout pc = new LinearLayout(this);
+        pc.setOrientation(LinearLayout.VERTICAL);
+        pc.setVisibility(android.view.View.GONE);
+        Ui.button(this, l, "🔑 אבא כאן – פתיחה עם קוד הורה", 0x33FFFFFF, v ->
+                pc.setVisibility(pc.getVisibility() == android.view.View.GONE ? android.view.View.VISIBLE : android.view.View.GONE));
+        l.addView(pc);
+        final EditText pin = new EditText(this);
+        pin.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        pin.setHint("קוד הורה");
+        pin.setGravity(android.view.Gravity.CENTER);
+        pin.setTextColor(Color.WHITE);
+        pin.setHintTextColor(0x88FFFFFF);
+        pc.addView(pin);
+        final TextView pmsg = Ui.text(this, pc, "", 15, 0xFFFDE68A, true);
+        int[][] opts = sys ? new int[][]{{10}, {30}} : new int[][]{{30}, {60}, {180}};
+        for (int[] o : opts) {
+            final int min = o[0];
+            String lbl = (sys ? "⚙️ פתח הגדרות/התקנה ל־" : "🔓 פתח את " + name + " ל־") + (min < 60 ? min + " דקות" : (min / 60) + (min == 60 ? " שעה" : " שעות"));
+            Ui.button(this, pc, lbl, Ui.GREEN, v -> {
+                String want = Cfg.cfg(this).optString("pin", "");
+                if (want.isEmpty() || !want.equals(pin.getText().toString().trim())) {
+                    pmsg.setText("❌ קוד שגוי");
+                    pin.setText("");
+                    return;
+                }
+                long until = System.currentTimeMillis() + min * 60000L;
+                if (sys) {
+                    Cfg.setLocalSettingsUntil(this, until);
+                } else {
+                    try { Cfg.localSet(this, "pass", new JSONObject().put(Cfg.key(pkg), until)); } catch (Exception ignored) {}
+                    GuardService.localChanged();
+                }
+                finish();
+                Intent li = sys ? null : getPackageManager().getLaunchIntentForPackage(pkg);
+                if (li != null) startActivity(li.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                else if (sys && Rules.SETTINGS.equals(pkg)) {
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {}
+                }
+            });
+        }
         Ui.text(this, l, "חסימה חכמה · חי אפליקציות", 13, 0x99FFFFFF, false).setPadding(0, Ui.dp(this, 24), 0, 0);
     }
 
@@ -155,6 +197,7 @@ public class BlockActivity extends Activity {
             r.put("p", pkg);
             r.put("n", name);
             r.put("why", why);
+            if (Rules.SETTINGS.equals(pkg) || Rules.isInstaller(pkg)) r.put("sys", true);
             if (!msg.isEmpty()) r.put("msg", msg);
             r.put("t", new JSONObject().put(".sv", "timestamp"));
             Fb.put("d/" + Cfg.deviceId(this) + "/req/" + Cfg.key(pkg), r.toString());
