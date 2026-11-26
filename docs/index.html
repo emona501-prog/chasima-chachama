@@ -178,6 +178,13 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
         <h2>📱 הנגן</h2>
         <div id="devInfo" class="muted"></div>
       </div>
+      <div class="card">
+        <h2>💌 הודעה על כל המסך</h2>
+        <p class="muted">תקפוץ גדולה על כל מסך הנגן, עם לב שהילד יכול ללחוץ וישלח לך ❤️ בחזרה</p>
+        <textarea id="bannerTxtHome" rows="2" placeholder="למשל: אני גאה בך! 💙"></textarea>
+        <div style="height:8px"></div>
+        <button class="p" style="width:100%" onclick="sendBanner('bannerTxtHome')">💌 שלח על כל המסך</button>
+      </div>
     </div>
 
     <!-- אפליקציות -->
@@ -1052,9 +1059,9 @@ async function chatSendFile(f){
   }catch(e){ upl(""); toast("❌ השליחה נכשלה: "+e.message); PEND = f; $("chatPend").classList.remove("hide"); }
 }
 
-function sendBanner(){
-  const t=$("bannerTxt").value.trim(); if(!t) return toast("כתוב הודעה");
-  $("bannerTxt").value="";
+function sendBanner(id){
+  const el=$(id||"bannerTxt"); const t=el.value.trim(); if(!t) return toast("כתוב הודעה");
+  el.value="";
   patchCfg({banner:{txt:t, t:Date.now()}}, "💌 ההודעה נשלחה למסך הנגן");
 }
 
