@@ -668,7 +668,7 @@ function renderReqs(){
   $("reqs").innerHTML = ks.length ? ks.map(k=>`
     <div class="app">${appIcon(k)}
       <div class="n"><b>${esc(r[k].n||appName(k))}</b><span class="muted">${r[k].game?(r[k].auto?"🎮 משחק חדש – נחסם אוטומטית":"🎮 הותקן משחק חדש"):r[k].nw?"🆕 הותקנה אפליקציה חדשה":"מבקש לפתוח"} · ${ago(r[k].t)}</span></div>
-    </div>${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
+    </div>${r[k].sys?"":appInfoLinks(k, r[k].n)}${r[k].why?`<div class="muted" style="margin:2px 0;color:#fde68a">🔒 נחסם כי: ${esc(r[k].why)}</div>`:""}${r[k].msg?`<div class="msg k" style="max-width:100%;margin:4px 0">💬 ${esc(r[k].msg)}</div>`:""}
     ${r[k].sys ? `<div class="grid2" style="grid-template-columns:1fr 1fr 1fr;margin:6px 0 4px">
       <button class="y sm" onclick="sysOpen('${k}',10)">⚙️ 10 ד׳</button>
       <button class="y sm" onclick="sysOpen('${k}',30)">⚙️ 30 ד׳</button>
@@ -701,6 +701,20 @@ async function answer(k, val){
     if(val==="allow" && timeWhy(why)) toast("✅ אושר – אבל ייפתח רק בשעות המסך. לפתיחה מיד: ⭐ תמיד או 🔓 פתח עכשיו");
     else toast(val==="block" ? "✖️ נדחה" : "✅ אושר – נפתח בנגן");
   }catch(e){ toast("❌ "+e.message); }
+}
+/* קישורים לבדיקת אפליקציה לפני אישור */
+function appInfoLinks(k, n){
+  const pkg = (r=>r)(String(k).replace(/,/g,".")), name = n || pkg;
+  const play = "https://play.google.com/store/apps/details?hl=iw&id="+encodeURIComponent(pkg);
+  const g = "https://www.google.com/search?q="+encodeURIComponent(`"${name}" משחק ביקורת הורים מתאים לילדים`);
+  const csm = "https://www.commonsensemedia.org/search/"+encodeURIComponent(name);
+  const yt = "https://www.youtube.com/results?search_query="+encodeURIComponent(name+" gameplay");
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">
+    <a class="chip" href="${play}" target="_blank" rel="noopener">🏪 בחנות (תיאור + גיל)</a>
+    <a class="chip" href="${yt}" target="_blank" rel="noopener">▶️ איך זה נראה</a>
+    <a class="chip" href="${g}" target="_blank" rel="noopener">🔍 מה הורים אומרים</a>
+    <a class="chip" href="${csm}" target="_blank" rel="noopener">👨‍👩‍👦 דירוג להורים</a>
+  </div>`;
 }
 async function sysOpen(k, min){
   if(min==="day"){ const e = new Date(); e.setHours(23,59,0,0); min = Math.max(1, Math.round((e-Date.now())/60000)); }
