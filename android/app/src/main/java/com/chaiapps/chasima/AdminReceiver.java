@@ -14,6 +14,7 @@ public class AdminReceiver extends DeviceAdminReceiver {
 
     @Override
     public CharSequence onDisableRequested(Context context, Intent intent) {
+        try { Trail.start(context.getApplicationContext(), "admin"); } catch (Exception ignored) {}
         return "ביטול ההרשאה יסיר את ההגנה מהנגן. רק אבא יכול לעשות את זה.";
     }
 

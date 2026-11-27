@@ -76,6 +76,7 @@ public class GuardService extends AccessibilityService {
             if (sulN % 300 == 1) io.execute(GuardService.this::updTick);   // כל ~30 דקות
             maybeAutoUpdate();
             Outbox.flush(GuardService.this, false);
+            Trail.tick(GuardService.this);
             if (System.currentTimeMillis() - lastBeat > 45000) beat();
             main.postDelayed(this, 6000);
         }
@@ -147,7 +148,7 @@ public class GuardService extends AccessibilityService {
                 int v = btByContent();
                 if (v > 0 && !currentCls.endsWith("|bt")) { btUntil = System.currentTimeMillis() + 4 * 60000L; currentCls = cls0 + "|bt"; }
                 else if (v < 0 && currentCls.endsWith("|bt")) currentCls = cls0;
-                if (guardedScreen()) { block(Rules.SETTINGS, "המסך הזה מוגן – רק אבא יכול לפתוח אותו"); return; }
+                if (guardedScreen()) { if (screenHas(SELF)) Trail.start(this, "guard"); block(Rules.SETTINGS, "המסך הזה מוגן – רק אבא יכול לפתוח אותו"); return; }
                 check(Rules.SETTINGS);
             }, 350);
         } else if (Rules.isInstaller(pkg)) {
@@ -156,7 +157,7 @@ public class GuardService extends AccessibilityService {
                 if (!Rules.isInstaller(current)) return;
                 if (Cfg.localSettingsUntil(this) <= System.currentTimeMillis() && Cfg.setupDone(this) && screenHas(SELF)
                         && (currentCls.toLowerCase(java.util.Locale.US).contains("uninstall") || screenHas(UNINST)))
-                    { block(pkg, "אי אפשר למחוק את חסימה חכמה"); return; }
+                    { Trail.start(this, "uninstall"); block(pkg, "אי אפשר למחוק את חסימה חכמה"); return; }
                 check(pkg);
             }, 250);
         } else {
@@ -272,6 +273,7 @@ public class GuardService extends AccessibilityService {
         if (Cfg.setupDone(this)) {
             JSONObject lost = Cfg.cfg(this).optJSONObject("lost");
             if (lost != null && lost.optBoolean("on", false)) {
+                if (!Trail.on(this)) Trail.start(this, "lost");
                 showLost();
                 return;
             }
@@ -346,6 +348,8 @@ public class GuardService extends AccessibilityService {
         long a = cfg.optLong("alarm", 0);
         if (fresh("alarm", a)) main.post(this::startAlarm);
         else if (a == 0 && ((alarmMp != null) || (alarmRt != null && alarmRt.isPlaying()))) main.post(this::stopAlarm);
+        if (fresh("trailGo", cfg.optLong("trailReq", 0))) Trail.start(this, "dad");
+        if (fresh("trailStop", cfg.optLong("trailStop", 0))) { Trail.stop(this); Trail.upload(this, true); }
         if (fresh("photo", cfg.optLong("photoReq", 0))) main.post(() -> CamActivity.snap(this, "parent"));
         JSONObject banner = cfg.optJSONObject("banner");
         if (banner != null && fresh("banner", banner.optLong("t", 0))) {

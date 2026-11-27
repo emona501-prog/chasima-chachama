@@ -30,6 +30,7 @@ final class Pin {
         long u = System.currentTimeMillis() + LOCK_MS;
         Cfg.p(a).edit().putInt("badPin", 0).putLong("pinLockUntil", u).apply();
         Outbox.event(a, "pin");
+        Trail.start(a, "pin");
         show(a);
     }
 
