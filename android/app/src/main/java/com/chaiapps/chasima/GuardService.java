@@ -138,23 +138,6 @@ public class GuardService extends AccessibilityService {
             else if (!home && nowBt < btUntil) { btUntil = nowBt + 4 * 60000L; currentCls = currentCls + "|bt"; }
             else if (home) btUntil = 0;
         }
-        // גילוי האפליקציה המוסתרת: 10 לחיצות רצופות על ההגדרות
-        if (changed && pkg.equals(Rules.SETTINGS)) {
-            long now = System.currentTimeMillis();
-            if (now - settingsTapsAt > 20000) settingsTaps = 0;
-            settingsTapsAt = now;
-            if (++settingsTaps >= 10) {
-                settingsTaps = 0;
-                performGlobalAction(GLOBAL_ACTION_HOME);
-                main.postDelayed(() -> {
-                    try {
-                        startActivity(new Intent(this, MainActivity.class)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-                    } catch (Exception ignored) {}
-                }, 150);
-                return;
-            }
-        }
         if (pkg.equals(Rules.SETTINGS)) {
             // בהגדרות: מחכים רגע שהמסך יטען, ובודקים לפי מה שכתוב בו אם זה מסך בלוטות'
             final String cls0 = currentCls;
@@ -163,12 +146,62 @@ public class GuardService extends AccessibilityService {
                 int v = btByContent();
                 if (v > 0 && !currentCls.endsWith("|bt")) { btUntil = System.currentTimeMillis() + 4 * 60000L; currentCls = cls0 + "|bt"; }
                 else if (v < 0 && currentCls.endsWith("|bt")) currentCls = cls0;
+                if (guardedScreen()) { block(Rules.SETTINGS, "המסך הזה מוגן – רק אבא יכול לפתוח אותו"); return; }
                 check(Rules.SETTINGS);
             }, 350);
+        } else if (Rules.isInstaller(pkg)) {
+            // מחיקה דרך מנהל קבצים / חלון הסרה – אם זו חסימה חכמה, חוסמים מיד
+            main.postDelayed(() -> {
+                if (!Rules.isInstaller(current)) return;
+                if (Cfg.localSettingsUntil(this) <= System.currentTimeMillis() && Cfg.setupDone(this) && screenHas(SELF)
+                        && (currentCls.toLowerCase(java.util.Locale.US).contains("uninstall") || screenHas(UNINST)))
+                    { block(pkg, "אי אפשר למחוק את חסימה חכמה"); return; }
+                check(pkg);
+            }, 250);
         } else {
             check(pkg);
         }
         if (changed && System.currentTimeMillis() - lastBeat > 5000) beat();
+    }
+
+    private static final String[] SELF = {"חסימה חכמה", "com.chaiapps.chasima", "חסימה חכמה – שומר"};
+    private static final String[] UNINST = {"להסיר", "הסרת ההתקנה", "הסרת התקנה", "למחוק", "uninstall"};
+    private static final String[] GUARDED = {"חסימה חכמה", "com.chaiapps.chasima", "מנהל מכשיר", "מנהלי מכשיר",
+            "אפליקציות לניהול המכשיר", "device admin", "נגישות", "accessibility", "איפוס", "reset", "אפשרויות מפתח",
+            "developer options", "משתמשים", "users", "מצב בטוח", "safe mode"};
+
+    /**
+     * כשההגדרות פתוחות לילד (בקשה שאבא אישר מרחוק) – עדיין חוסמים מסכים שבהם אפשר לכבות/למחוק את ההגנה.
+     * כשאבא פתח בעצמו בנגן עם הקוד – הכל פתוח.
+     */
+    private boolean guardedScreen() {
+        if (!Cfg.setupDone(this)) return false;
+        if (Cfg.localSettingsUntil(this) > System.currentTimeMillis()) return false;
+        if (currentCls.endsWith("|bt")) return false;
+        String c = currentCls.toLowerCase(java.util.Locale.US);
+        if (c.contains("deviceadmin") || c.contains("accessibility") || c.contains("reset") || c.contains("development")) return true;
+        return screenHas(GUARDED);
+    }
+
+    private boolean screenHas(String[] words) {
+        android.view.accessibility.AccessibilityNodeInfo root;
+        try { root = getRootInActiveWindow(); } catch (Exception e) { return false; }
+        if (root == null) return false;
+        StringBuilder sb = new StringBuilder();
+        java.util.ArrayDeque<android.view.accessibility.AccessibilityNodeInfo> q = new java.util.ArrayDeque<>();
+        q.add(root);
+        int n = 0;
+        while (!q.isEmpty() && n < 500) {
+            android.view.accessibility.AccessibilityNodeInfo x = q.poll();
+            n++;
+            if (x == null) continue;
+            if (x.getText() != null) sb.append(' ').append(x.getText());
+            if (x.getContentDescription() != null) sb.append(' ').append(x.getContentDescription());
+            for (int i = 0; i < x.getChildCount(); i++) { try { q.add(x.getChild(i)); } catch (Exception ignored) {} }
+        }
+        String t = sb.toString().toLowerCase(java.util.Locale.US);
+        for (String w : words) if (t.contains(w.toLowerCase(java.util.Locale.US))) return true;
+        return false;
     }
 
     /** 1 = מסך בלוטות' בטוח, -1 = מסך מסוכן (נגישות/אפליקציות/מנהל מכשיר...), 0 = לא ידוע. */
@@ -233,6 +266,10 @@ public class GuardService extends AccessibilityService {
         }
         String reason = Rules.check(this, pkg, pkg.equals(current) ? currentCls : "", launchable, exempt);
         if (reason == null) return;
+        block(pkg, reason);
+    }
+
+    private void block(String pkg, String reason) {
         long now = System.currentTimeMillis();
         if (pkg.equals(lastBlockPkg) && now - lastBlockAt < 1200) return;
         lastBlockPkg = pkg;
@@ -586,10 +623,22 @@ public class GuardService extends AccessibilityService {
             Cfg.saveCfg(this, json);
             Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).putString("cfgErr", "").apply();
             if (!old.equals(json)) recheck();
+            applyIcon();
             handleCmds();
         } catch (Exception ex) {
             Cfg.p(this).edit().putString("cfgErr", String.valueOf(ex.getMessage())).apply();
         }
+    }
+
+    /** 🙈 אבא מסתיר/מציג את האייקון מהטלפון שלו */
+    private void applyIcon() {
+        try {
+            JSONObject cfg = Cfg.cfg(this);
+            if (!cfg.has("hideIcon")) return;
+            boolean want = cfg.optBoolean("hideIcon", false);
+            if (want != Cfg.p(this).getBoolean("iconHidden", false)) MainActivity.setIconHidden(this, want);
+        } catch (Exception ignored) {}
+        if (Cfg.setupDone(this)) Owner.lock(this);
     }
 
     /** דיווח להורה: הנגן מחובר, מה פתוח עכשיו, סוללה. */
@@ -605,6 +654,8 @@ public class GuardService extends AccessibilityService {
                 st.put("guard", true);
                 DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
                 st.put("admin", dpm.isAdminActive(AdminReceiver.name(this)));
+                st.put("owner", Owner.is(this));
+                st.put("hidden", Cfg.p(this).getBoolean("iconHidden", false));
                 BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
                 st.put("bat", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY));
                 st.put("v", BuildConfig.VERSION_NAME);

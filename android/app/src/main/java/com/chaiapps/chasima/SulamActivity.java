@@ -252,6 +252,14 @@ public class SulamActivity extends Activity {
             return !pin.isEmpty() && pin.equals(p);
         }
 
+        /** 🛡️ דלת סודית: פתיחת חסימה חכמה (גם כשהאייקון מוסתר) – שם עדיין צריך קוד הורה */
+        @JavascriptInterface
+        public void openGuard() {
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(SulamActivity.this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {}
+            });
+        }
+
         @JavascriptInterface
         public boolean hasVoice() { return ttsOk; }
 

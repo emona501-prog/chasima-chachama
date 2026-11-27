@@ -96,10 +96,13 @@ public class MainActivity extends Activity {
         return new ComponentName(this, getPackageName() + ".Launcher");
     }
 
-    private void setIconHidden(boolean hide) {
-        Cfg.p(this).edit().putBoolean("iconHidden", hide).apply();
+    private void setIconHidden(boolean hide) { setIconHidden(this, hide); }
+
+    /** הסתרה/הצגה של האייקון – גם מרחוק (מהטלפון של אבא) */
+    static void setIconHidden(android.content.Context c, boolean hide) {
+        Cfg.p(c).edit().putBoolean("iconHidden", hide).apply();
         try {
-            getPackageManager().setComponentEnabledSetting(launcherAlias(),
+            c.getPackageManager().setComponentEnabledSetting(new ComponentName(c, c.getPackageName() + ".Launcher"),
                     hide ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                          : PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                     PackageManager.DONT_KILL_APP);
@@ -303,7 +306,7 @@ public class MainActivity extends Activity {
                 LinearLayout d = Ui.screen(this);
                 Ui.text(this, d, "🙈", 64, Color.WHITE, false).setPadding(0, Ui.dp(this, 50), 0, 0);
                 Ui.text(this, d, "האייקון הוסתר", 24, Color.WHITE, true);
-                Ui.text(this, d, "כדי לפתוח שוב את חסימה חכמה:\nלוחצים 10 פעמים על אייקון \"הגדרות\" בנגן, ואז מקלידים את קוד ההורה.", 16, 0xCCFFFFFF, false);
+                Ui.text(this, d, "כדי לפתוח שוב את חסימה חכמה:\n• מהטלפון של אבא: לשונית הגדרות ← \"הצג אייקון\"\n• או בנגן: הסולם שלי ← הגדרות ← הגדרות אבא (קוד) ← \"🛡️ פתח את חסימה חכמה\"", 16, 0xCCFFFFFF, false);
                 Ui.button(this, d, "הבנתי, סגור", Ui.GREEN, x -> {
                     parentOpen = false;
                     moveTaskToBack(true);
@@ -319,6 +322,7 @@ public class MainActivity extends Activity {
             build();
         });
         Ui.button(this, l, "🗑️ הסרת ההגנה מהנגן", Ui.RED, v -> {
+            Owner.release(this);
             try {
                 DevicePolicyManager dpm = (DevicePolicyManager) getSystemService(DEVICE_POLICY_SERVICE);
                 dpm.removeActiveAdmin(AdminReceiver.name(this));
