@@ -173,6 +173,29 @@ public class MainActivity extends Activity {
         public void setNetAlerts(boolean on) { prefs(MainActivity.this).edit().putBoolean("netAlerts", on).putString("netState", "").apply(); }
 
         @JavascriptInterface
+        public int appVersion() { return BuildConfig.VERSION_CODE; }
+
+        /** עדכון האפליקציה מתוכה: הורדה והתקנה בלי דפדפן. התקדמות חוזרת ל-window.__updMsg */
+        @JavascriptInterface
+        public void selfUpdate(boolean onlyIfNew) {
+            Updater.Progress pr = msg -> {
+                String js = "window.__updMsg&&__updMsg(" + org.json.JSONObject.quote(msg) + ")";
+                try { web.evaluateJavascript(js, null); } catch (Exception ignored) {}
+            };
+            if (onlyIfNew) Updater.checkAndUpdate(MainActivity.this, pr, false);
+            else Updater.run(MainActivity.this, pr);
+        }
+
+        @JavascriptInterface
+        public void checkUpdate() {
+            new Thread(() -> {
+                int latest = Updater.latestBuild();
+                String js = "window.__updAvail&&__updAvail(" + latest + "," + BuildConfig.VERSION_CODE + ")";
+                runOnUiThread(() -> { try { web.evaluateJavascript(js, null); } catch (Exception ignored) {} });
+            }).start();
+        }
+
+        @JavascriptInterface
         public String getDevice() {
             return prefs(MainActivity.this).getString("id", "");
         }

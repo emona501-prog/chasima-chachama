@@ -130,7 +130,7 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
     <!-- בית -->
     <div id="t-home">
       <div class="card"><button class="y" style="width:100%" onclick="diag()">🩺 בדיקת חיבור</button><div id="diagOut" class="muted" style="margin-top:10px;line-height:1.8"></div></div>
-      <div id="netErr" class="alert hide"></div><div id="alerts"></div>
+      <div id="selfUpdBar" class="alert hide" style="background:rgba(59,130,246,.25);border-color:#3b82f6">📱 יש גרסה חדשה לאפליקציה שלך <button class="sm" style="margin-top:6px;width:100%" onclick="selfUpdate()">⬇️ עדכן עכשיו (בלי לצאת)</button><div id="selfUpdMsg2" class="muted"></div></div><div id="netErr" class="alert hide"></div><div id="alerts"></div>
       <div class="card" id="pauseCard">
         <button id="pauseBtn" style="width:100%;font-size:18px;padding:14px" onclick="togglePause()">⏸️ השהה את כל ההגנה</button>
         <p class="muted" style="text-align:center;margin-top:8px">כשההגנה מושהית, הכל פתוח לילד עד שתפעיל שוב</p>
@@ -398,7 +398,8 @@ footer{text-align:center;color:var(--dim);font-size:12px;padding:10px}
       <div class="card">
         <h2>📱 עדכון האפליקציה שלי (של אבא)</h2>
         <p class="muted">רוב העדכונים מגיעים אליך לבד – רק סוגרים ופותחים את האפליקציה. לפעמים (כשאני מבקש) צריך להוריד גרסה חדשה: לוחצים כאן ← "התקן". ההגדרות והחיבור לנגן נשמרים.</p>
-        <button class="p" style="width:100%" onclick="location.href='https://github.com/emona501-prog/chasima-chachama/releases/latest/download/chasima-horim.apk'">⬇️ הורד והתקן את הגרסה האחרונה</button>
+        <button class="p" style="width:100%" onclick="selfUpdate()">⬇️ עדכן את האפליקציה שלי</button>
+        <div id="selfUpdMsg" class="muted" style="margin-top:8px"></div>
       </div>
       <div class="card">
         <h2>⚙️ הגדרות הנגן</h2>
@@ -571,6 +572,7 @@ function start(){
   $("devId").textContent = "מזהה נגן: " + ID;
   setTimeout(()=>{ renderStatus(); pollAll(); }, 1500);
   try{ initNet(); }catch(e){}
+  setTimeout(checkSelfUpd, 4000);
 }
 let polling=false, pollN=0;
 async function pollAll(force){
@@ -1338,6 +1340,24 @@ async function sulGift(sign){
   const k = Date.now().toString(36)+"g";
   try{ await fb("PUT", `d/${ID}/s/kupa/${k}`, {k:"gift", pts, txt:$("giftTxt").value.trim(), t:Date.now()}); $("giftAmt").value=""; $("giftTxt").value=""; toast(sign>0?"🎁 נוסף לקופה!":"➖ הורד מהקופה"); pollSulam(); }
   catch(e){ toast("❌ "+e.message); }
+}
+
+/* ---------- עדכון אפליקציית ההורה מתוכה ---------- */
+function hasSelfUpd(){ try{ return !!(window.ChasimaApp && ChasimaApp.selfUpdate); }catch(e){ return false; } }
+window.__updMsg = m => { ["selfUpdMsg","selfUpdMsg2"].forEach(id=>{ const e=$(id); if(e) e.textContent=m; }); };
+window.__updAvail = (latest, mine) => { if(latest>0 && latest>mine) $("selfUpdBar").classList.remove("hide"); };
+function selfUpdate(){
+  if(hasSelfUpd()){ __updMsg("מתחיל…"); ChasimaApp.selfUpdate(false); }
+  else location.href="https://github.com/emona501-prog/chasima-chachama/releases/latest/download/chasima-horim.apk";
+}
+function checkSelfUpd(){
+  try{
+    if(!(window.ChasimaApp && ChasimaApp.checkUpdate)) return;
+    const last=+localStorage.getItem("updChk")||0;
+    if(Date.now()-last < 6*3600000) return;
+    localStorage.setItem("updChk", Date.now());
+    ChasimaApp.checkUpdate();
+  }catch(e){}
 }
 
 /* ---------- התראות חיבור ---------- */
