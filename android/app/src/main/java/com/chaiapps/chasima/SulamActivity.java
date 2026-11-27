@@ -35,9 +35,11 @@ public class SulamActivity extends Activity {
     }
 
     /** איזה ברסלב PRO מותקן (קודם זה ששלח נתונים לאחרונה). */
-    String bpPkg() {
-        String last = Cfg.p(this).getString("bpPkg", "");
-        android.content.pm.PackageManager pm = getPackageManager();
+    String bpPkg() { return bpPkgOf(this); }
+
+    static String bpPkgOf(android.content.Context c) {
+        String last = Cfg.p(c).getString("bpPkg", "");
+        android.content.pm.PackageManager pm = c.getPackageManager();
         if (!last.isEmpty() && pm.getLaunchIntentForPackage(last) != null) return last;
         for (String p : BP_PKGS) if (pm.getLaunchIntentForPackage(p) != null) return p;
         return "";
@@ -210,6 +212,13 @@ public class SulamActivity extends Activity {
                 startActivity(i);
                 return true;
             } catch (Exception e) { return false; }
+        }
+
+        /** תזכורות ליעדים: [{id, at, t, x, act}] */
+        @JavascriptInterface
+        public void setGoalRems(String json) {
+            if (json == null || json.length() > 20000) return;
+            Cfg.p(SulamActivity.this).edit().putString("sulGoalRem", json).apply();
         }
 
         /** תזכורת יומית (HH:MM, ריק = בלי) */

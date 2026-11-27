@@ -498,6 +498,28 @@ public class GuardService extends AccessibilityService {
                 }
             }
         } catch (Exception ignored) {}
+        // ⏰ תזכורות ליעדים – לחיצה פותחת ישר את ברסלב PRO במקום של היום
+        try {
+            String gr = sp.getString("sulGoalRem", "");
+            if (!gr.isEmpty()) {
+                String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+                String now = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date());
+                String done = sp.getString("sulGoalRemDone", "");
+                if (!done.startsWith(today)) done = today;
+                org.json.JSONArray arr = new org.json.JSONArray(gr);
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject n = arr.optJSONObject(i);
+                    if (n == null) continue;
+                    String at = n.optString("at", "99"), id = n.optString("id");
+                    if (now.compareTo(at) < 0 || done.contains("|" + id + "|")) continue;
+                    done = done + "|" + id + "|";
+                    sp.edit().putString("sulGoalRemDone", done).apply();
+                    String[] hm = at.split(":"), nw = now.split(":");
+                    int late = Integer.parseInt(nw[0]) * 60 + Integer.parseInt(nw[1]) - Integer.parseInt(hm[0]) * 60 - Integer.parseInt(hm[1]);
+                    if (late <= 120) Notify.sulamBp(this, 1300 + (id.hashCode() & 0xff), n.optString("t"), n.optString("x"), n.optString("act"));
+                }
+            }
+        } catch (Exception ignored) {}
         // תזכורת יומית
         try {
             String rem = sp.getString("sulRem", "");

@@ -955,6 +955,42 @@ const BPT = {tikkun:["📜","תיקון הכללי"], smt:["📖","שניים מ
 const BPQ = {teh:[1,3,5,10,20], zohar:[1,2,3,5,10], hal:[1,2,3,5,10], book:[1,2,3,5]};
 const BPUNIT = {teh:"פרקים", zohar:"קטעים", hal:"סעיפים", book:"פרקים"};
 function bpApp(){ try{ return NB ? NB.bpApp() : ""; }catch(e){ return ""; } }
+/* ---------- יעדים שנקבעו בסולם + תזכורות ---------- */
+function SG(){ try{ return Object.assign({pend:[], rems:{}}, JSON.parse(LS.get("sgoals")||"{}")); }catch(e){ return {pend:[], rems:{}}; } }
+function SGsave(o){ LS.set("sgoals", JSON.stringify(o)); syncGoalRems(); }
+function goalLabel(o){
+  const books = ((D.bp||{}).books)||[];
+  if(o.k==="book"){ const b = books.find(x=>x.b==o.b); return (b?b.n:"לימוד בספר") + (o.q?` – ${o.q} ${BPUNIT.book}`:""); }
+  if(o.k==="free") return o.txt||"יעד אישי";
+  return BPT[o.k][1] + (BPQ[o.k] && o.q ? ` – ${o.q} ${BPUNIT[o.k]}` : "");
+}
+function goalAct(id){ const sg = SG(), p = sg.pend.find(x=>x.id===id), gs = ((D.bp||{}).goals)||[];
+  return (p && !gs.some(g=>g.id===id)) ? "ngo:" + hexOf(JSON.stringify(p.o)) : "g:" + id; }
+function openGoal(id){ openBp(goalAct(id)); }
+function syncGoalRems(){
+  try{
+    if(!(NB && NB.setGoalRems)) return;
+    const sg = SG(), gs = ((D.bp||{}).goals)||[], out = [];
+    Object.keys(sg.rems||{}).forEach(id=>{
+      const at = sg.rems[id]; if(!/^\d{2}:\d{2}$/.test(at||"")) return;
+      const g = gs.find(x=>x.id===id), p = sg.pend.find(x=>x.id===id);
+      if(!g && !p) return;
+      const lbl = g ? (g.lbl||g.n) : p.lbl;
+      out.push({id, at, t:"📖 הגיע הזמן ללמוד!", x:`${lbl} – לחץ כאן ונפתח לך ישר המקום של היום`, act: goalAct(id)});
+    });
+    NB.setGoalRems(JSON.stringify(out));
+  }catch(e){}
+}
+function goalRem(id, ev){
+  if(ev) ev.stopPropagation();
+  const sg = SG(), cur = (sg.rems||{})[id]||"";
+  modalForm("⏰ תזכורת ליעד", `<p class="muted">באיזו שעה כל יום להזכיר לך? בלחיצה על ההתראה – נפתח ישר המקום של היום בברסלב PRO.</p>
+    <input class="inp" type="time" id="grTime" value="${cur}"><p class="muted">להשאיר ריק = בלי תזכורת</p>`, ()=>{
+      const v = ($("grTime")||{}).value||""; const s2 = SG(); s2.rems = s2.rems||{};
+      if(/^\d{2}:\d{2}$/.test(v)) s2.rems[id] = v; else delete s2.rems[id];
+      SGsave(s2); toast(v ? "⏰ כל יום ב־"+v+" תקבל תזכורת" : "התזכורת בוטלה"); if(CUR==="today") renderToday();
+    }, "שמירה");
+}
 function openBp(act){ let ok = false; try{ ok = NB && NB.openBp(act); }catch(e){} if(!ok) toast(bpApp() ? "לא הצלחתי לפתוח את ברסלב PRO" : "ברסלב PRO לא מותקן בנגן"); return ok; }
 function bpCard(day){
   const bp = D.bp, inst = bpApp();
@@ -967,13 +1003,22 @@ function bpCard(day){
     h += done.length ? done.map(x=>`<div class="bpg on"><div class="ic">${x.ic||"🎯"}</div><div class="nm"><b>${esc(x.lbl)}</b><span>✓ הושלם</span></div></div>`).join("") : `<p class="muted">לא סומנו יעדים ביום הזה</p>`;
     return h + `</div>`;
   }
-  if(!gs.length) h += `<p class="muted">${bp ? "עוד אין יעדים בברסלב PRO." : "פתח פעם אחת את ברסלב PRO כדי שהיעדים יגיעו לכאן."} בוא נתכנן יעד ראשון! 👇</p>`;
+  const sg = SG(), pend = sg.pend.filter(p=>!gs.some(g=>g.id===p.id));
+  if(pend.length !== sg.pend.length){ sg.pend = pend; LS.set("sgoals", JSON.stringify(sg)); }
+  setTimeout(syncGoalRems, 0);
+  if(!gs.length && !pend.length) h += `<p class="muted">${bp ? "עוד אין יעדים." : "עוד אין יעדים."} בוא נתכנן יעד ראשון! 👇</p>`;
+  const remBtn = id => `<button class="ghost sm" style="padding:4px 8px;margin-inline-start:6px" onclick="goalRem('${esc(id)}',event)">⏰ ${(sg.rems||{})[id]||""}</button>`;
+  for(const p of pend){
+    h += `<div class="bpg" onclick="openGoal('${esc(p.id)}')"><div class="ic">${p.ic||"🎯"}</div>
+      <div class="nm"><b>${esc(p.lbl)}</b><span>🆕 יעד חדש – לחיצה פותחת ישר את הלימוד של היום</span></div>
+      ${remBtn(p.id)}<div class="go">📖 פתח</div></div>`;
+  }
   for(const g of gs){
     const on = !!(day.bp||{})[g.id], pc = g.tot ? Math.min(100, Math.round((g.pos||0)/g.tot*100)) : 0;
-    h += `<div class="bpg ${on?"on":""}" onclick="openBp('g:${esc(g.id)}')"><div class="ic">${g.ic||"🎯"}</div>
+    h += `<div class="bpg ${on?"on":""}" onclick="openGoal('${esc(g.id)}')"><div class="ic">${g.ic||"🎯"}</div>
       <div class="nm"><b>${esc(g.lbl||g.n)}</b><span>${on?"✓ סיימת היום · "+P(bpPts()):"היום · "+P(bpPts())+" כשתסמן ✓ בברסלב PRO"}${g.once?" · חד-פעמי":""}</span>
       ${g.tot?`<div class="gb"><i style="width:${pc}%"></i></div><span>התקדמות: ${pc}% (${g.pos||0} מתוך ${g.tot})</span>`:""}</div>
-      <div class="go">${on?"✓":"📖 פתח"}</div></div>`;
+      ${remBtn(g.id)}<div class="go">${on?"✓":"📖 פתח"}</div></div>`;
   }
   h += `<div class="row" style="margin-top:6px"><button class="ghost sm" style="flex:1" onclick="openBp('goals')">🎯 כל היעדים</button><button class="y sm" style="flex:1" onclick="planGoal()">➕ תכנון יעד חדש</button></div>`;
   return h + `</div>`;
@@ -1035,8 +1080,9 @@ function renderPlan(){
     ${qs ? `<label>כמה ${BPUNIT[k]} כל יום?</label><div class="opt">${qs.map(q=>`<span class="${+PL.q===q?"on":""}" onclick="PL.q=${q};renderPlan()">${q}</span>`).join("")}</div>` : ""}
     ${k==="smt" ? `<div class="opt"><span class="${PL.cur?"":"on"}" onclick="PL.cur=false;renderPlan()">🔁 הקצב שלי</span><span class="${PL.cur?"on":""}" onclick="PL.cur=true;renderPlan()">🗓️ לפי פרשת השבוע</span></div>` : ""}
     <div class="opt"><span class="${PL.once?"":"on"}" onclick="PL.once=false;renderPlan()">🔁 סדר קבוע</span><span class="${PL.once?"on":""}" onclick="PL.once=true;renderPlan()">✅ פעם אחת</span></div>
+    <label>⏰ באיזו שעה להזכיר לך? (לא חובה)</label><input class="inp" type="time" value="${PL.at||""}" oninput="PL.at=this.value">
     <div class="est">${est}</div>
-    <p class="muted">כל יעד שתסמן ✓ בברסלב PRO = ${bpPts()} נקודות בסולם 🪜</p></div>`, sendPlan, "🎯 קבע את היעד בברסלב PRO");
+    <p class="muted">כל יעד שתסמן ✓ בברסלב PRO = ${bpPts()} נקודות בסולם 🪜</p></div>`, sendPlan, "🎯 קבע את היעד");
   if(k==="book" && PL.b===undefined && books[0]) PL.b = books[0].b;
 }
 function sendPlan(){
@@ -1045,7 +1091,13 @@ function sendPlan(){
   if(PL.k==="book"){ if(PL.b===undefined) return toast("בחר ספר"); o.b = +PL.b; }
   if(PL.k==="free"){ const t = (PL.txt||"").trim(); if(!t) return toast("כתוב מה היעד"); o.txt = t.slice(0,60); }
   if(PL.once) o.once = 1; if(PL.cur) o.cur = 1;
-  if(openBp("ng:" + hexOf(JSON.stringify(o)))){ say("יאללה! קבענו יעד. אני בטוח שתצליח!", ""); }
+  o.id = "s" + Date.now().toString(36);
+  const sg = SG();
+  sg.pend.push({id:o.id, o, lbl: goalLabel(o), ic: (BPT[o.k]||["🎯"])[0]});
+  if(/^\d{2}:\d{2}$/.test(PL.at||"")) sg.rems[o.id] = PL.at;
+  SGsave(sg);
+  if(CUR==="today") renderToday();
+  say("יאללה! קבענו יעד" + (PL.at ? `, ואזכיר לך כל יום ב־${PL.at}` : "") + ". אני בטוח שתצליח!", "");
 }
 
 /* ---------- הדמות של אבא ---------- */

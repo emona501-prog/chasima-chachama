@@ -35,6 +35,31 @@ final class Notify {
         try { nm.notify(id, b.build()); } catch (Exception ignored) {}
     }
 
+    /** תזכורת ליעד – לחיצה פותחת ישר את ברסלב PRO במקום של היום (ואם אין – את הסולם). */
+    static void sulamBp(Context c, int id, String title, String txt, String act) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(new NotificationChannel("sulam", "הסולם שלי", NotificationManager.IMPORTANCE_HIGH));
+        Intent i = null;
+        String pkg = SulamActivity.bpPkgOf(c);
+        if (!pkg.isEmpty() && act != null && act.matches("[a-z:0-9]+")) {
+            i = c.getPackageManager().getLaunchIntentForPackage(pkg);
+            if (i != null) i.putExtra("wact", act);
+        }
+        if (i == null) i = new Intent(c, SulamActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pi = PendingIntent.getActivity(c, id, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, "sulam") : new Notification.Builder(c);
+        b.setSmallIcon(android.R.drawable.star_on)
+                .setContentTitle(title)
+                .setContentText(txt)
+                .setStyle(new Notification.BigTextStyle().bigText(txt))
+                .setAutoCancel(true)
+                .setContentIntent(pi);
+        if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL);
+        try { nm.notify(id, b.build()); } catch (Exception ignored) {}
+    }
+
     /** יש גרסה חדשה – לחיצה מעדכנת מיד. */
     static void update(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
