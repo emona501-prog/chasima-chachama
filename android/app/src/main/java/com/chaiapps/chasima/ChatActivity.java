@@ -1,6 +1,7 @@
 package com.chaiapps.chasima;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.app.NotificationManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -92,6 +93,24 @@ public class ChatActivity extends Activity {
         up.topMargin = Ui.dp(this, 4);
         root.addView(upd, up);
         root.addView(updSt);
+
+        Button bt = new Button(this);
+        bt.setText("📶 בלוטות'");
+        bt.setAllCaps(false);
+        bt.setTextColor(Color.WHITE);
+        bt.setTextSize(14);
+        GradientDrawable bg2 = new GradientDrawable();
+        bg2.setColor(0x333B82F6);
+        bg2.setCornerRadius(Ui.dp(this, 12));
+        bt.setBackground(bg2);
+        bt.setOnClickListener(v -> {
+            try { startActivity(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+            catch (Exception ignored) {}
+        });
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        bp.gravity = Gravity.CENTER;
+        root.addView(bt, bp);
 
         scroll = new ScrollView(this);
         list = new LinearLayout(this);

@@ -155,8 +155,45 @@ public class GuardService extends AccessibilityService {
                 return;
             }
         }
-        check(pkg);
+        if (pkg.equals(Rules.SETTINGS)) {
+            // בהגדרות: מחכים רגע שהמסך יטען, ובודקים לפי מה שכתוב בו אם זה מסך בלוטות'
+            final String cls0 = currentCls;
+            main.postDelayed(() -> {
+                if (!Rules.SETTINGS.equals(current)) return;
+                int v = btByContent();
+                if (v > 0 && !currentCls.endsWith("|bt")) { btUntil = System.currentTimeMillis() + 4 * 60000L; currentCls = cls0 + "|bt"; }
+                else if (v < 0 && currentCls.endsWith("|bt")) currentCls = cls0;
+                check(Rules.SETTINGS);
+            }, 350);
+        } else {
+            check(pkg);
+        }
         if (changed && System.currentTimeMillis() - lastBeat > 5000) beat();
+    }
+
+    /** 1 = מסך בלוטות' בטוח, -1 = מסך מסוכן (נגישות/אפליקציות/מנהל מכשיר...), 0 = לא ידוע. */
+    private int btByContent() {
+        android.view.accessibility.AccessibilityNodeInfo root;
+        try { root = getRootInActiveWindow(); } catch (Exception e) { return 0; }
+        if (root == null) return 0;
+        StringBuilder sb = new StringBuilder();
+        java.util.ArrayDeque<android.view.accessibility.AccessibilityNodeInfo> q = new java.util.ArrayDeque<>();
+        q.add(root);
+        int n = 0;
+        while (!q.isEmpty() && n < 500) {
+            android.view.accessibility.AccessibilityNodeInfo x = q.poll();
+            n++;
+            if (x == null) continue;
+            if (x.getText() != null) sb.append(' ').append(x.getText());
+            if (x.getContentDescription() != null) sb.append(' ').append(x.getContentDescription());
+            for (int i = 0; i < x.getChildCount(); i++) { try { q.add(x.getChild(i)); } catch (Exception ignored) {} }
+        }
+        String t = sb.toString().toLowerCase(java.util.Locale.US);
+        String[] danger = {"נגישות", "accessibility", "אפליקציות", "apps", "מנהל", "admin", "אבטחה", "security",
+                "פרטיות", "privacy", "מערכת", "system", "איפוס", "reset", "משתמש", "user", "חסימה חכמה", "מפתח", "developer",
+                "סוללה", "battery", "אחסון", "storage", "הרשאות", "permission", "חשבונות", "accounts", "google"};
+        for (String d : danger) if (t.contains(d)) return -1;
+        return Rules.isBtScreen(t) ? 1 : 0;
     }
 
     private boolean isHome(String pkg) {
