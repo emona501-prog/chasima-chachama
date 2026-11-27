@@ -879,7 +879,8 @@ function renderTable(){
       const val = v[it.id], on = it.t==="min" ? (+val>0) : it.t==="ch" ? (+val>0) : !!val;
       const bad = it.t==="neg";
       let ctl = "", sub = "";
-      if(it.t==="chk"){ sub = P(+it.p); ctl = `<div class="tick">${on?"✓":""}</div>`; }
+      if(it.t==="chk"){ sub = P(+it.p); ctl = `<div class="tick">${on?"✓":""}</div>`;
+        if(it.id==="smt" && bpApp() && !on) ctl = `<button class="ghost sm" style="flex:none;padding:7px 9px;font-size:12px" onclick="event.stopPropagation();bpGo('smt')">📖 פתח</button>` + ctl; }
       if(it.t==="neg"){ sub = P(-it.p) + " (שובר שלב!)"; ctl = `<div class="tick">${on?"✗":""}</div>`; }
       if(it.t==="min"){ sub = `${it.p} נק׳ לכל דקה${on?` · `+P(itemPts(it,val)):""}`;
         ctl = `<div class="stp"><button class="ghost" onclick="event.stopPropagation();addMin('${it.id}',-1)">−</button><div class="v" onclick="event.stopPropagation();typeMin('${it.id}')">${+val||0}<small>דק׳</small></div><button onclick="event.stopPropagation();addMin('${it.id}',1)" dir="ltr">+1</button><button class="g" onclick="event.stopPropagation();addMin('${it.id}',5)" dir="ltr">+5</button></div>`; }
@@ -1564,6 +1565,34 @@ const CHAL = [
   {id:"smt_day", d:[0,1,2,3,4], s:"smt", e:"📜", t:"קרא היום את העלייה של שניים מקרא ואחד תרגום", p:5},
 ];
 const SLOTS = ["08:00","14:00","18:00"];
+// 🕯️ שבת ויום טוב – לפי הלוח היהודי (ירושלים: הדלקת נרות 40 דק' לפני השקיעה)
+function sunsetMin(date){ // דקות מחצות, שעון מקומי
+  const lat = 31.778, lng = 35.235, rad = Math.PI/180;
+  const st = new Date(date.getFullYear(),0,0), N = Math.floor((date - st)/864e5);
+  const g = 2*Math.PI/365*(N-1);
+  const eq = 229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  const dec = 0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const ha = Math.acos(Math.cos(90.833*rad)/(Math.cos(lat*rad)*Math.cos(dec))-Math.tan(lat*rad)*Math.tan(dec))/rad;
+  const tz = -new Date(date.getFullYear(),date.getMonth(),date.getDate(),12).getTimezoneOffset();
+  return 720 - 4*(lng - ha) - eq + tz;
+}
+function isHoly(date){ // שבת או יום טוב
+  if(date.getDay() === 6) return true;
+  try{ const F = HB.flags; return (HB.HebrewCalendar.getHolidaysOnDate(new HB.HDate(date), true)||[]).some(e => e.getFlags() & F.CHAG); }catch(e){ return false; }
+}
+function erevHoly(date){ const n = new Date(date); n.setDate(n.getDate()+1); return !isHoly(date) && isHoly(n); }
+function hm2(m){ m = Math.max(0, Math.round(m)); return pad(Math.floor(m/60))+":"+pad(m%60); }
+function candleMin(date){ return sunsetMin(date) - 40; }
+// בערב שבת/חג: האתגרים נפתחים מוקדם, והאחרון לפחות 3 שעות לפני הדלקת נרות
+function slotsFor(date){
+  if(!erevHoly(date)) return SLOTS;
+  const end = Math.floor((candleMin(date) - 180)/15)*15, a = 8*60;
+  if(end <= a) return ["07:00","07:30","08:00"];
+  const mid = Math.floor((a + (end-a)/2)/15)*15;
+  return [hm2(a), hm2(mid), hm2(end)];
+}
+// אחרי שעה לפני הדלקת נרות – כבר לא מקפיצים אתגרים (שבת מתקרבת)
+function chalClosed(date){ return erevHoly(date) && (date.getHours()*60+date.getMinutes()) >= candleMin(date) - 60; }
 function seeded(n){ let x = n; return () => (x = (x*9301+49297) % 233280) / 233280; }
 function weekStart(d){ const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - x.getDay()); return x; }
 function smtThisWeek(upTo){
@@ -1578,19 +1607,21 @@ function smtThisWeek(upTo){
 // 3 האתגרים של היום (קבוע לאותו יום)
 function chalsFor(date){
   if(D.set.chalOff) return [];
-  const dow = date.getDay(); if(dow === 6) return [];
+  const dow = date.getDay(); if(isHoly(date)) return [];
   const rnd2 = seeded(+dk(date).replace(/-/g,""));
   let pool = CHAL.filter(c => c.d.includes(dow));
   const out = [];
-  if(dow === 5){
-    // בונוס שישי – אם לא קרא שניים מקרא מיום ראשון עד חמישי
+  if(dow === 5 || erevHoly(date)){
+    // בונוס ערב שבת/חג – אם לא קרא שניים מקרא מיום ראשון עד חמישי
     const thu = new Date(date); thu.setDate(thu.getDate()-1);
-    if(!smtThisWeek(thu) || (D.days[dk(date)]||{}).ch?.smt_fri !== undefined) out.push(CHAL.find(c=>c.id==="smt_fri"));
-    out.push(CHAL.find(c=>c.id==="shabbat_help"));
-    pool = pool.filter(c => !out.includes(c) && c.id !== "smt_fri");
+    if(dow === 5 && (!smtThisWeek(thu) || (D.days[dk(date)]||{}).ch?.smt_fri !== undefined)) out.push(CHAL.find(c=>c.id==="smt_fri"));
+    const sh = CHAL.find(c=>c.id==="shabbat_help");
+    out.push(dow === 5 ? sh : Object.assign({}, sh, {t:"אמא צריכה עזרה בהכנות לחג – בוא תעזור ותקבל בונוס!"}));
+    pool = pool.filter(c => !out.some(o => o.id === c.id) && c.id !== "smt_fri");
   } else pool = pool.filter(c => c.id !== "smt_day" || !(D.days[dk(date)]||{}).v?.smt);
   while(out.length < 3 && pool.length){ const i = Math.floor(rnd2()*pool.length); out.push(pool.splice(i,1)[0]); }
-  return out.map((c,i) => Object.assign({at: SLOTS[i]}, c));
+  const sl = slotsFor(date);
+  return out.map((c,i) => Object.assign({at: sl[i]}, c));
 }
 function nowHM(){ const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
 function renderChal(){
@@ -1601,8 +1632,25 @@ function renderChal(){
   box.innerHTML = `<div class="card chal"><h2>🎯 אתגרי בונוס להיום</h2>` + list.map(c => {
     const on = done[c.id] !== undefined, open = hm >= c.at;
     if(!open) return `<div class="cg lock"><div class="ic">🔒</div><div class="nm">אתגר מפתיע נפתח ב־${c.at}<small>${P(c.p)}</small></div></div>`;
-    return `<div class="cg ${on?"on":""}"><div class="ic">${c.e}</div><div class="nm">${esc(c.t)}<small>${on?"✓ עשית! ":"בונוס "}${P(c.p)}</small></div>${on?"":`<button class="y" onclick="chalDone('${c.id}')">✅ עשיתי!</button>`}</div>`;
+    const lk = bpLinkKind(c), link = lk && bpApp() && !on ? `<button class="ghost" style="margin-top:6px;padding:6px 10px;font-size:12px" onclick="bpGo('${lk}')">📖 פתח בברסלב PRO</button>` : "";
+    return `<div class="cg ${on?"on":""}"><div class="ic">${c.e}</div><div class="nm">${esc(c.t)}<small>${on?"✓ עשית! ":"בונוס "}${P(c.p)}</small>${link}</div>${on?"":`<button class="y" onclick="chalDone('${c.id}')">✅ עשיתי!</button>`}</div>`;
   }).join("") + `</div>`;
+}
+// 📖 קישור לברסלב PRO: שניים מקרא / סיפורי מעשיות – פותח את היעד הקיים, ואם אין – תכנון יעד מוכן
+function bpLinkKind(c){ return c.s === "smt" ? "smt" : c.id === "maasiyot" ? "maasiyot" : ""; }
+function bpGo(kind){
+  if(!bpApp()) return toast("ברסלב PRO לא מותקן בנגן");
+  const gs = ((D.bp||{}).goals)||[];
+  if(kind === "smt"){
+    const g = gs.find(x => x.k === "smt");
+    return g ? openBp("g:" + g.id) : planGoal({k:"smt", cur:true});
+  }
+  if(kind === "maasiyot"){
+    const g = gs.find(x => x.k === "book" && /מעשיות/.test(x.lbl||""));
+    if(g) return openBp("g:" + g.id);
+    const b = (((D.bp||{}).books)||[]).find(x => /סיפורי מעשיות/.test(x.n));
+    return planGoal(b ? {k:"book", b:b.b, q:1} : {k:"book", q:1});
+  }
 }
 function chalDone(id){
   const t = dk(new Date()), c = chalsFor(new Date()).find(x=>x.id===id); if(!c) return;
@@ -1629,11 +1677,14 @@ function chalAuto(id){
 // חלון קופץ כשנפתח אתגר חדש
 function chalPop(){
   if(CUR !== "today" || $("modal").innerHTML || !$("intro").classList.contains("hide")) return;
+  if(chalClosed(new Date())) return;
   const t = dk(new Date()), hm = nowHM(), seen = JSON.parse(LS.get("chalSeen")||"{}");
   const c = chalsFor(new Date()).find(x => hm >= x.at && !seen[t+x.id] && ((D.days[t]||{}).ch||{})[x.id] === undefined);
   if(!c) return;
   seen[t+c.id] = 1; LS.set("chalSeen", JSON.stringify(seen));
-  showModal(`<img src="img/dad.png" style="height:120px" onerror="this.outerHTML='🎯'">`, "🎯 אתגר בונוס חדש!", `${c.e} ${esc(c.t)}<br><b style="color:#fde68a">בונוס: ${c.p} נקודות</b>`, "💪 יאללה!", "", () => { scrollTo({top: $("chalBox").offsetTop - 80, behavior:"smooth"}); });
+  const lk = bpLinkKind(c);
+  if(lk && bpApp()) showModal(`<img src="img/dad.png" style="height:120px" onerror="this.outerHTML='🎯'">`, "🎯 אתגר בונוס חדש!", `${c.e} ${esc(c.t)}<br><b style="color:#fde68a">בונוס: ${c.p} נקודות</b>`, "📖 פתח בברסלב PRO", "", () => bpGo(lk));
+  else showModal(`<img src="img/dad.png" style="height:120px" onerror="this.outerHTML='🎯'">`, "🎯 אתגר בונוס חדש!", `${c.e} ${esc(c.t)}<br><b style="color:#fde68a">בונוס: ${c.p} נקודות</b>`, "💪 יאללה!", "", () => { scrollTo({top: $("chalBox").offsetTop - 80, behavior:"smooth"}); });
   say(c.t, "");
 }
 // התראות בנגן לשבוע הקרוב (הנגן מקפיץ אותן גם כשהסולם סגור)
