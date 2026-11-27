@@ -395,9 +395,15 @@ public class GuardService extends AccessibilityService {
             alarmMp.setAudioAttributes(new android.media.AudioAttributes.Builder()
                     .setUsage(android.media.AudioAttributes.USAGE_ALARM)
                     .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
-            android.content.res.AssetFileDescriptor fd = getResources().openRawResourceFd(R.raw.siren);
-            alarmMp.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
-            fd.close();
+            java.io.File cust = new java.io.File(getFilesDir(), "alarm_custom");
+            JSONObject as = Cfg.cfg(this).optJSONObject("alarmSnd");
+            if (as != null && "custom".equals(as.optString("k")) && cust.exists() && cust.length() > 0) {
+                alarmMp.setDataSource(cust.getAbsolutePath());   // 🎙️ ההקלטה של אבא
+            } else {
+                android.content.res.AssetFileDescriptor fd = getResources().openRawResourceFd(R.raw.siren);
+                alarmMp.setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getLength());
+                fd.close();
+            }
             alarmMp.setLooping(true);
             alarmMp.setVolume(1f, 1f);
             alarmMp.prepare();
@@ -640,10 +646,30 @@ public class GuardService extends AccessibilityService {
             Cfg.p(this).edit().putLong("cfgAt", System.currentTimeMillis()).putString("cfgErr", "").apply();
             if (!old.equals(json)) recheck();
             applyIcon();
+            syncAlarmSound();
             handleCmds();
         } catch (Exception ex) {
             Cfg.p(this).edit().putString("cfgErr", String.valueOf(ex.getMessage())).apply();
         }
+    }
+
+    /** 🎙️ צליל אזעקה שאבא הקליט – יורד פעם אחת ונשמר בנגן (עובד גם בלי אינטרנט) */
+    private void syncAlarmSound() {
+        try {
+            JSONObject as = Cfg.cfg(this).optJSONObject("alarmSnd");
+            if (as == null || !"custom".equals(as.optString("k"))) return;
+            long v = as.optLong("v", 0);
+            if (v == 0 || v == Cfg.p(this).getLong("asndV", 0)) return;
+            String js = Fb.get("d/" + Cfg.deviceId(this) + "/asnd");
+            JSONObject o = new JSONObject(js);
+            if (o.optLong("v", 0) != v) return;
+            byte[] b = android.util.Base64.decode(o.getString("b64"), android.util.Base64.DEFAULT);
+            java.io.File tmp = new java.io.File(getFilesDir(), "alarm_custom.tmp");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) { out.write(b); }
+            tmp.renameTo(new java.io.File(getFilesDir(), "alarm_custom"));
+            Cfg.p(this).edit().putLong("asndV", v).apply();
+            Fb.patch("d/" + Cfg.deviceId(this) + "/st", new JSONObject().put("asndV", v).put("alarmMsg", "🎙️ ההקלטה נשמרה בנגן").toString());
+        } catch (Exception ignored) {}
     }
 
     /** 🙈 אבא מסתיר/מציג את האייקון מהטלפון שלו */
