@@ -547,6 +547,8 @@ const DEF_ITEMS = [
   {id:"room",      n:"סידרתי את החדר", e:"🛏️", c:"guf", t:"chk", p:10},
   {id:"meal",      n:"אכלתי ארוחה מסודרת", e:"🍽️", c:"guf", t:"chk", p:5},
   {id:"sleep",     n:"הלכתי לישון בזמן", e:"😴", c:"guf", t:"chk", p:10},
+  {id:"take_chen", n:"לקחתי את חן מהגן", e:"👧", c:"midot", t:"chk", p:15},
+  {id:"take_dan",  n:"לקחתי את דניאל מהתלמוד תורה", e:"👦", c:"midot", t:"chk", p:15},
   {id:"help",      n:"עזרתי בבית", e:"🧹", c:"midot", t:"chk", p:10},
   {id:"kibud",     n:"כיבוד אב ואם", e:"👨‍👩‍👦", c:"midot", t:"chk", p:10},
   {id:"angry",     n:"התעצבנתי / דיברתי לא יפה", e:"😤", c:"midot", t:"neg", p:10},
@@ -568,6 +570,7 @@ function load(){
   let o = {};
   try{ o = JSON.parse(LS.get("sulam")||"{}"); }catch(e){}
   if(!o.set) o.set = DEF_SET();
+  if(o.set.items && !o.set.items.some(i=>i.id==="take_chen")){ const i = o.set.items.findIndex(x=>x.c==="midot"); o.set.items.splice(i<0?o.set.items.length:i, 0, {id:"take_chen", n:"לקחתי את חן מהגן", e:"👧", c:"midot", t:"chk", p:15}, {id:"take_dan", n:"לקחתי את דניאל מהתלמוד תורה", e:"👦", c:"midot", t:"chk", p:15}); o.set.at = Date.now(); }
   if(o.set.items && !o.set.items.some(i=>i.id==="smt")){ const i = o.set.items.findIndex(x=>x.id==="chumash"); o.set.items.splice(i<0?o.set.items.length:i+1, 0, {id:"smt", n:"שניים מקרא ואחד תרגום (העלייה של היום)", e:"📖", c:"limud", t:"chk", p:10}); }
   o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {}; o.ideas = o.ideas || {}; o.box = o.box || {}; o.arch = o.arch || {};
   return o;
@@ -618,7 +621,7 @@ async function pull(first){
   try{
     const set = await fb("GET","set");
     if(set && (set.at||0) > (D.set.at||0)) { D.set = Object.assign(DEF_SET(), set); renderAll(); }
-    else if(!set) enqueue("PUT","set", D.set);
+    else if(!set || (D.set.at||0) > (set.at||0)) enqueue("PUT","set", D.set);
     const kupa = await fb("GET","kupa") || {};
     const before = JSON.stringify(D.kupa);
     for(const k in kupa) D.kupa[k] = kupa[k];
