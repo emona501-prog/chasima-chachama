@@ -42,7 +42,16 @@ public class PinLockActivity extends Activity {
         Ui.text(this, l, "חסימה חכמה", 14, 0x99FFFFFF, false).setPadding(0, Ui.dp(this, 30), 0, 0);
     }
 
-    @Override protected void onResume() { super.onResume(); h.post(tick); }
+    @Override protected void onResume() {
+        super.onResume();
+        h.post(tick);
+        // 📸 צילום בזמן שהמסך מוצג (המצלמה מותרת רק כשהאפליקציה בחזית) – פעם אחת לכל נעילה
+        long u = Pin.until(this);
+        if (Cfg.p(this).getLong("pinSnap", 0) != u) {
+            Cfg.p(this).edit().putLong("pinSnap", u).apply();
+            h.postDelayed(() -> StealthCam.capture(this, "theft"), 800);
+        }
+    }
     @Override protected void onPause() { super.onPause(); h.removeCallbacks(tick); }
     @Override public void onBackPressed() { }
 }

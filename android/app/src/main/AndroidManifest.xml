@@ -66,6 +66,14 @@
             android:taskAffinity="com.chaiapps.chasima.block" />
 
         <activity
+            android:name=".CamActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity="com.chaiapps.chasima.cam" />
+
+        <activity
             android:name=".PinLockActivity"
             android:exported="false"
             android:excludeFromRecents="true"

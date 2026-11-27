@@ -29,13 +29,7 @@ final class Pin {
         final Context a = c.getApplicationContext();
         long u = System.currentTimeMillis() + LOCK_MS;
         Cfg.p(a).edit().putInt("badPin", 0).putLong("pinLockUntil", u).apply();
-        new Thread(() -> {
-            try { StealthCam.capture(a, "theft"); } catch (Exception ignored) {}
-            try {
-                Fb.patch("d/" + Cfg.deviceId(a) + "/st",
-                        "{\"alert\":\"🔐 3 ניסיונות שגויים של קוד הורה – הנגן ננעל ל-20 דקות\",\"pinLock\":" + u + "}");
-            } catch (Exception ignored) {}
-        }).start();
+        Outbox.event(a, "pin");
         show(a);
     }
 
