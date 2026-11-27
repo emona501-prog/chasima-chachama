@@ -69,7 +69,32 @@ final class Loc {
     }
 
     /** מבקש מיקום טרי מכל מקור זמין (GPS / רשת), עד 60 שניות. */
-    static void fresh(Context c, Cb cb) {
+    /** מיקום משוער לפי האינטרנט (עיר/שכונה) – כשאין GPS. */
+    static JSONObject byIp() {
+        try {
+            java.net.HttpURLConnection h = (java.net.HttpURLConnection) new java.net.URL("https://ipwho.is/?lang=he").openConnection();
+            h.setConnectTimeout(10000); h.setReadTimeout(10000);
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            try (java.io.InputStream in = h.getInputStream()) { byte[] b = new byte[4096]; int n; while ((n = in.read(b)) > 0) bo.write(b, 0, n); }
+            JSONObject r = new JSONObject(bo.toString("UTF-8"));
+            if (!r.optBoolean("success", false)) return null;
+            JSONObject o = new JSONObject();
+            o.put("lat", r.getDouble("latitude")); o.put("lng", r.getDouble("longitude"));
+            o.put("acc", 5000); o.put("approx", true); o.put("city", r.optString("city", ""));
+            o.put("t", System.currentTimeMillis());
+            return o;
+        } catch (Exception e) { return null; }
+    }
+
+    static void fresh(Context c, Cb cb0) {
+        final Cb cb = (loc, err) -> {
+            if (loc != null) { cb0.done(loc, err); return; }
+            new Thread(() -> {
+                JSONObject ip = byIp();
+                if (ip != null) cb0.done(ip, "📶 מיקום משוער לפי האינטרנט" + (ip.optString("city").isEmpty() ? "" : " (" + ip.optString("city") + ")") + " · " + err);
+                else cb0.done(loc, err);
+            }).start();
+        };
         android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
         h.post(() -> {
             if (!allowed(c)) { cb.done(null, "הרשאת מיקום כבויה בנגן"); return; }

@@ -1077,7 +1077,9 @@ function renderSecure(){
     const a=$("alarmMsg"); if(a) a.textContent = st.alarmMsg||"";
     const c=$("camMsg"); if(c) c.textContent = st.cam===false ? "⚠️ אין הרשאת מצלמה בנגן – תפריט הורה בנגן ← ✅ לאשר הרשאות" : (st.camMsg||""); },0);
   if(lc.lat!=null){
-    $("locInfo").innerHTML = `מיקום אחרון: <b style="color:#fff">${(+lc.lat).toFixed(5)}, ${(+lc.lng).toFixed(5)}</b><br>דיוק ~${lc.acc||"?"} מ׳ · ${ago(lc.t)}`;
+    $("locInfo").innerHTML = lc.approx
+      ? `📶 מיקום <b style="color:#fde68a">משוער</b> לפי האינטרנט${lc.city?": <b style='color:#fff'>"+esc(lc.city)+"</b>":""}<br>דיוק נמוך (בערך עיר/אזור) · ${ago(lc.t)}`
+      : `מיקום אחרון: <b style="color:#fff">${(+lc.lat).toFixed(5)}, ${(+lc.lng).toFixed(5)}</b><br>דיוק ~${lc.acc||"?"} מ׳ · ${ago(lc.t)}`;
     $("mapBtn").href = `https://www.google.com/maps/search/?api=1&query=${lc.lat},${lc.lng}`;
     $("mapBtn").classList.remove("hide");
   } else {
