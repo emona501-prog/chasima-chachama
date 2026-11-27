@@ -472,6 +472,32 @@ public class GuardService extends AccessibilityService {
                 }
             }
         } catch (Exception ignored) {}
+        // 🎯 אתגרי בונוס – התראה כשנפתח אתגר
+        try {
+            String notes = sp.getString("sulNotes", "");
+            if (!notes.isEmpty()) {
+                String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+                String now = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(new java.util.Date());
+                String noted = sp.getString("sulNoted", "");
+                org.json.JSONArray arr = new org.json.JSONArray(notes);
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject n = arr.optJSONObject(i);
+                    if (n == null || !today.equals(n.optString("d")) || now.compareTo(n.optString("at", "99")) < 0) continue;
+                    String key = n.optString("d") + n.optString("id");
+                    if (noted.contains("|" + key)) continue;
+                    // לא מתריעים על אתגר שעבר זמנו ביותר משעתיים (למשל כשהנגן היה כבוי)
+                    String[] hm = n.optString("at").split(":");
+                    int atMin = Integer.parseInt(hm[0]) * 60 + Integer.parseInt(hm[1]);
+                    String[] nw = now.split(":");
+                    int nowMin = Integer.parseInt(nw[0]) * 60 + Integer.parseInt(nw[1]);
+                    noted = noted + "|" + key;
+                    if (noted.length() > 3000) noted = noted.substring(noted.length() - 2000);
+                    sp.edit().putString("sulNoted", noted).apply();
+                    if (nowMin - atMin <= 120) Notify.sulam(this, 1103 + (key.hashCode() & 0xff), n.optString("t"), n.optString("x"));
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
         // תזכורת יומית
         try {
             String rem = sp.getString("sulRem", "");

@@ -221,6 +221,12 @@ public class SulamActivity extends Activity {
         @JavascriptInterface
         public String getRem() { return Cfg.p(SulamActivity.this).getString("sulRem", ""); }
 
+        /** 🎯 לוח ההתראות של אתגרי הבונוס לשבוע הקרוב */
+        @JavascriptInterface
+        public void setNotes(String json) {
+            if (json != null && json.length() < 20000) Cfg.p(SulamActivity.this).edit().putString("sulNotes", json).apply();
+        }
+
         /** היום כבר סימנו משהו – לא צריך תזכורת */
         @JavascriptInterface
         public void markDay(String dk) { Cfg.p(SulamActivity.this).edit().putString("sulDay", dk).apply(); }

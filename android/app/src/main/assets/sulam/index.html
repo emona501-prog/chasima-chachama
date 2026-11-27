@@ -90,6 +90,14 @@ main{padding:12px;max-width:620px;margin:auto}
 .kinds span.on{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#2a1600;border-color:transparent}
 .idea{padding:10px;border-radius:14px;background:rgba(0,0,0,.2);margin-bottom:7px;font-size:14px;line-height:1.5}
 .idea small{display:block;color:var(--dim);font-size:11px;margin-top:3px}
+/* אתגרי בונוס */
+.chal .cg{display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;background:linear-gradient(135deg,#f59e0b22,#ec489922);border:1px solid #fbbf2455;margin-bottom:7px}
+.chal .cg .ic{font-size:26px}
+.chal .cg .nm{flex:1;min-width:0;font-size:14px;font-weight:700;line-height:1.4}
+.chal .cg .nm small{display:block;font-size:12px;color:#fde68a;font-weight:800}
+.chal .cg.on{background:linear-gradient(135deg,#22c55e33,#16a34a1c);border-color:#22c55e66}
+.chal .cg.lock{opacity:.55;filter:grayscale(.5)}
+.chal .cg button{flex:none;padding:8px 10px;font-size:13px}
 /* צ'אט עם אבא */
 .chat{display:flex;flex-direction:column;gap:8px;padding:6px 0 150px}
 .cm{max-width:80%;padding:9px 12px;border-radius:18px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word;position:relative}
@@ -316,6 +324,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
         </div>
       </div>
     </div>
+    <div id="chalBox"></div>
     <div id="table"></div>
     <button class="y" style="width:100%;font-size:17px;padding:14px" onclick="daySummary()">📋 סיכום היום ושליחה לאבא</button>
   </main>
@@ -346,6 +355,8 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
     <h3>📚 ברסלב PRO</h3>
     <p>היעדים שלך בברסלב PRO (תהלים, תיקון הכללי, שניים מקרא, ליקוטי מוהר״ן וכל ספר) מופיעים בסולם. לוחצים – וזה פותח בדיוק את המקום של היום. מסמנים ✓ בברסלב PRO – והנקודות עולות בסולם לבד!</p>
     <p>רוצה יעד חדש? "➕ תכנון יעד חדש" – בוחרים מה וכמה כל יום, ואבא כבר דואג שהכול יסתדר.</p>
+    <h3>🎯 אתגרי בונוס</h3>
+    <p>כל יום נפתחים 3 אתגרים מפתיעים – בבוקר, בצהריים ובערב: לשחק עם אחיך, לעזור בבית, לקרוא מעשייה… עשית? לוחצים "✅ עשיתי!" והבונוס נכנס. ביום שישי – אתגרי שבת, ובונוס מיוחד על שניים מקרא אם עוד לא קראת השבוע.</p>
     <h3>הקופה והפרסים</h3>
     <p>כל נקודה נכנסת לקופה. כשיש מספיק – לוחצים "אני רוצה!", הבקשה מגיעה לאבא, וכשהוא מאשר מקבלים את הפרס באמת. אפשר גם לחסוך לפרס גדול.</p>
     <h3>הכללים שלנו</h3>
@@ -462,6 +473,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:70}
       <label class="muted">בונוס על הגעה לראש הסולם</label><input class="inp" id="sBonus" type="number">
       <label class="muted">כמה נקודות = ₪1</label><input class="inp" id="sRate" type="number">
       <label class="muted">נקודות לכל יעד שהושלם בברסלב PRO</label><input class="inp" id="sBp" type="number">
+      <div class="row" style="margin:6px 0 10px"><div style="flex:1">🎯 אתגרי בונוס יומיים</div><label class="sw"><input type="checkbox" id="sChal"><i></i></label></div>
       <button class="g" style="width:100%" onclick="saveDad()">שמירה</button>
       <p class="muted">בזמן שההגדרות פתוחות אפשר לשנות את הניקוד ישירות ברשימת המשימות למעלה.</p>
     </div>
@@ -523,6 +535,7 @@ const DEF_ITEMS = [
   {id:"lh",        n:"ליקוטי הלכות", e:"📗", c:"limud", t:"min", p:2},
   {id:"lt",        n:"ליקוטי תפילות", e:"📙", c:"limud", t:"min", p:2},
   {id:"chumash",   n:"חומש / פרשת השבוע", e:"📜", c:"limud", t:"min", p:2},
+  {id:"smt",       n:"שניים מקרא ואחד תרגום (העלייה של היום)", e:"📖", c:"limud", t:"chk", p:10},
   {id:"gmara",     n:"גמרא / משניות", e:"🕯️", c:"limud", t:"min", p:2},
   {id:"tehilim",   n:"תהילים", e:"🎵", c:"limud", t:"min", p:1},
   {id:"mikve",     n:"מקווה", e:"💧", c:"avoda", t:"chk", p:15},
@@ -555,6 +568,7 @@ function load(){
   let o = {};
   try{ o = JSON.parse(LS.get("sulam")||"{}"); }catch(e){}
   if(!o.set) o.set = DEF_SET();
+  if(o.set.items && !o.set.items.some(i=>i.id==="smt")){ const i = o.set.items.findIndex(x=>x.id==="chumash"); o.set.items.splice(i<0?o.set.items.length:i+1, 0, {id:"smt", n:"שניים מקרא ואחד תרגום (העלייה של היום)", e:"📖", c:"limud", t:"chk", p:10}); }
   o.days = o.days || {}; o.kupa = o.kupa || {}; o.msg = o.msg || {}; o.ideas = o.ideas || {}; o.box = o.box || {}; o.arch = o.arch || {};
   return o;
 }
@@ -666,6 +680,7 @@ function calc(key){
   let earn = 0, pen = 0;
   for(const it of items()){ const p = itemPts(it, v[it.id]); if(p>0) earn+=p; else pen-=p; }
   earn += Object.keys(day.bp||{}).length * bpPts();
+  for(const k in (day.ch||{})) earn += (+day.ch[k]||0);
   const net = earn - pen, raw = Math.max(0, net);
   const target = Math.max(10, +D.set.target||150);
   const top = raw >= target;
@@ -877,7 +892,7 @@ function renderTable(){
   $("table").innerHTML = h;
 }
 function extraCats(){ return []; }
-function renderToday(){ renderHeader(); renderTable(); showTip(); checkUpd(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
+function renderToday(){ renderHeader(); renderChal(); renderTable(); showTip(); checkUpd(); const st = renderScore(); lastStep = st.step; lastBrk = st.brk.length; lastTop = st.top; }
 
 /* ---------- סימון ---------- */
 function setVal(id, val, srcEl){
@@ -898,6 +913,8 @@ function setVal(id, val, srcEl){
   day.sc = st.total; day.pct = st.pct; day.top = st.top;
   save(); enqueue("PUT", "days/"+VIEW, day); writeSum();
   try{ if(NB && VIEW === dk(new Date())) NB.markDay(VIEW); }catch(e){}
+  if(it.t !== "neg" && val) setTimeout(()=>chalAuto(id), 900);
+  chalNotes();
   const diff = itemPts(it, day.v[id]) - oldP;
   if(diff) flyPlus(diff, srcEl || $("it_"+id));
   renderTable();
@@ -970,7 +987,7 @@ window.onBp = (json) => {
   if(snap.dk === t){
     const day = D.days[t] = D.days[t] || {v:{}};
     const before = calc(t), old = day.bp || {}, nb = {};
-    for(const g of snap.goals) if(g.done) nb[g.id] = {lbl: g.lbl, ic: g.ic};
+    for(const g of snap.goals) if(g.done) nb[g.id] = {lbl: g.lbl, ic: g.ic, k: g.k};
     const added = Object.keys(nb).filter(k=>!old[k]);
     if(JSON.stringify(Object.keys(nb).sort()) !== JSON.stringify(Object.keys(old).sort())){
       day.bp = nb; day.at = Date.now();
@@ -1254,7 +1271,7 @@ function renderSet(){
   $("nEmo").innerHTML = EMOJIS.map(e=>`<span class="${e===nEmo?"on":""}" onclick="nEmo='${e}';renderSet()">${e}</span>`).join("");
   $("nCat").innerHTML = CATS.map(c=>`<option value="${c.id}">${c.e} ${c.n}</option>`).join("");
   $("dadLock").classList.toggle("hide", DAD); $("dadSet").classList.toggle("hide", !DAD);
-  if(DAD){ $("sTarget").value = D.set.target; $("sBonus").value = D.set.bonus; $("sRate").value = D.set.rate; $("sBp").value = bpPts(); }
+  if(DAD){ $("sTarget").value = D.set.target; $("sBonus").value = D.set.bonus; $("sRate").value = D.set.rate; $("sBp").value = bpPts(); $("sChal").checked = !D.set.chalOff; }
   try{ $("remT").value = NB ? NB.getRem() : (LS.get("rem")||""); }catch(e){}
   syncInfo();
 }
@@ -1288,6 +1305,7 @@ function saveDad(){
   D.set.bonus = Math.max(0, +$("sBonus").value||0);
   D.set.rate = Math.max(1, +$("sRate").value||100);
   D.set.bpPts = Math.max(0, +$("sBp").value||0);
+  if($("sChal").checked) delete D.set.chalOff; else D.set.chalOff = true;
   saveSet(); DAD = false; renderSet(); toast("✅ נשמר");
 }
 
@@ -1466,6 +1484,115 @@ async function chatSend(){
   catch(e){ $("chatIn").value = t; toast("❌ לא נשלח – אין אינטרנט"); }
 }
 
+
+/* ======================= 🎯 אתגרי בונוס (דרבונים) ======================= */
+// בונוסים קטנים וחמודים שמצטברים: ואהבת לרעך כמוך, עזרה בבית, תורה, ושבת.
+// כל יום נפתחים 3 אתגרים בשעות שונות (בוקר / צהריים / ערב). ביום שישי – אתגרי שבת + בונוס שניים מקרא אם עוד לא קרא השבוע.
+const CHAL = [
+  // יום שישי
+  {id:"smt_fri", d:[5], s:"smt", e:"📜", t:"יום שישי! עוד לא קראת שניים מקרא ואחד תרגום השבוע – קרא היום ותקבל בונוס מיוחד!", p:25},
+  {id:"shabbat_help", d:[5], e:"🕯️", t:"אמא צריכה עזרה בהכנות לשבת – בוא תעזור ותקבל בונוס!", p:15},
+  {id:"bro_tt", d:[5], e:"👦", t:"אחיך חזר מהתלמוד תורה – תשחק איתו קצת, הוא ישמח!", p:10},
+  {id:"shoes", d:[5], e:"👞", t:"כבוד שבת: צחצח את הנעליים וסדר בגדים לשבת", p:5},
+  {id:"fri_room", d:[5], e:"🛏️", t:"חדר נקי לכבוד שבת – סדר את החדר", p:10},
+  // במהלך השבוע
+  {id:"sis_walk", d:[0,1,2,3,4], e:"💛", t:"ואהבת לרעך כמוך: קח את אחותך לסיבוב קטן", p:10},
+  {id:"bro_play", d:[0,1,2,3,4], e:"🤝", t:"שחק עם אחיך 10 דקות – משחק שהוא בוחר", p:10},
+  {id:"bro_learn", d:[0,1,2,3,4], e:"📖", t:"למד עם אחיך כמה דקות תורה – תהיה לו המלמד!", p:15},
+  {id:"bro_story", d:[0,1,2,3,4], e:"📚", t:"קרא לאחיך או לאחותך סיפור", p:10},
+  {id:"maasiyot", d:[0,1,2,3,4,5], e:"🏰", t:"קרא מעשייה מסיפורי מעשיות של רבנו", p:15},
+  {id:"home_help", d:[0,1,2,3,4], e:"🧹", t:"עזור בבית בלי שיבקשו ממך – תפתיע את אמא!", p:10},
+  {id:"compliment", d:[0,1,2,3,4,5], e:"😊", t:"תגיד מילה טובה לכל אחד מבני הבית", p:5},
+  {id:"dishes", d:[0,1,2,3,4], e:"🍽️", t:"פנה את הכלים מהשולחן אחרי האוכל", p:5},
+  {id:"tehilim_for", d:[0,1,2,3,4,5], e:"🙏", t:"תגיד פרק תהלים לזכות מישהו שצריך ישועה", p:5},
+  {id:"hitbo5", d:[0,1,2,3,4], e:"🌳", t:"5 דקות התבודדות – לדבר עם השם כמו עם חבר", p:10},
+  {id:"smt_day", d:[0,1,2,3,4], s:"smt", e:"📜", t:"קרא היום את העלייה של שניים מקרא ואחד תרגום", p:5},
+];
+const SLOTS = ["08:00","14:00","18:00"];
+function seeded(n){ let x = n; return () => (x = (x*9301+49297) % 233280) / 233280; }
+function weekStart(d){ const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - x.getDay()); return x; }
+function smtThisWeek(upTo){
+  const ws = weekStart(upTo);
+  for(let t = new Date(ws); t <= upTo; t.setDate(t.getDate()+1)){
+    const day = D.days[dk(t)]; if(!day) continue;
+    if((day.v||{}).smt) return true;
+    if(Object.values(day.bp||{}).some(b => b.k === "smt")) return true;
+  }
+  return false;
+}
+// 3 האתגרים של היום (קבוע לאותו יום)
+function chalsFor(date){
+  if(D.set.chalOff) return [];
+  const dow = date.getDay(); if(dow === 6) return [];
+  const rnd2 = seeded(+dk(date).replace(/-/g,""));
+  let pool = CHAL.filter(c => c.d.includes(dow));
+  const out = [];
+  if(dow === 5){
+    // בונוס שישי – אם לא קרא שניים מקרא מיום ראשון עד חמישי
+    const thu = new Date(date); thu.setDate(thu.getDate()-1);
+    if(!smtThisWeek(thu) || (D.days[dk(date)]||{}).ch?.smt_fri !== undefined) out.push(CHAL.find(c=>c.id==="smt_fri"));
+    out.push(CHAL.find(c=>c.id==="shabbat_help"));
+    pool = pool.filter(c => !out.includes(c) && c.id !== "smt_fri");
+  } else pool = pool.filter(c => c.id !== "smt_day" || !(D.days[dk(date)]||{}).v?.smt);
+  while(out.length < 3 && pool.length){ const i = Math.floor(rnd2()*pool.length); out.push(pool.splice(i,1)[0]); }
+  return out.map((c,i) => Object.assign({at: SLOTS[i]}, c));
+}
+function nowHM(){ const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+function renderChal(){
+  const box = $("chalBox"); if(!box) return;
+  if(VIEW !== dk(new Date())){ box.innerHTML = ""; return; }
+  const list = chalsFor(new Date()), day = D.days[VIEW] || {}, done = day.ch || {}, hm = nowHM();
+  if(!list.length){ box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="card chal"><h2>🎯 אתגרי בונוס להיום</h2>` + list.map(c => {
+    const on = done[c.id] !== undefined, open = hm >= c.at;
+    if(!open) return `<div class="cg lock"><div class="ic">🔒</div><div class="nm">אתגר מפתיע נפתח ב־${c.at}<small>${P(c.p)}</small></div></div>`;
+    return `<div class="cg ${on?"on":""}"><div class="ic">${c.e}</div><div class="nm">${esc(c.t)}<small>${on?"✓ עשית! ":"בונוס "}${P(c.p)}</small></div>${on?"":`<button class="y" onclick="chalDone('${c.id}')">✅ עשיתי!</button>`}</div>`;
+  }).join("") + `</div>`;
+}
+function chalDone(id){
+  const t = dk(new Date()), c = chalsFor(new Date()).find(x=>x.id===id); if(!c) return;
+  const before = calc(t);
+  const day = D.days[t] = D.days[t] || {v:{}};
+  day.ch = Object.assign({}, day.ch, {[id]: c.p});
+  if(c.s === "smt"){ day.v = day.v || {}; if(!day.v.smt){ day.v.smt = true; } }
+  day.at = Date.now();
+  const st = calc(t); day.sc = st.total; day.pct = st.pct; day.top = st.top;
+  save(); enqueue("PUT", "days/"+t, day); writeSum();
+  try{ NB && NB.markDay(t); }catch(e){}
+  flyPlus(st.total - before.total, $("chalBox")); sparkle(); SFX.fix();
+  praise(st.top && !before.top ? "top" : "big");
+  renderToday(); chalNotes();
+  if(st.step > before.step) renderScore("climb");
+}
+// כשמסמנים שניים מקרא ביום שישי – הבונוס של שישי נכנס לבד
+function chalAuto(id){
+  if(id !== "smt" || VIEW !== dk(new Date())) return;
+  const c = chalsFor(new Date()).find(x => x.s === "smt" && nowHM() >= x.at);
+  const day = D.days[VIEW]; if(!c || !day || !(day.v||{}).smt || (day.ch||{})[c.id] !== undefined) return;
+  chalDone(c.id);
+}
+// חלון קופץ כשנפתח אתגר חדש
+function chalPop(){
+  if(CUR !== "today" || $("modal").innerHTML || !$("intro").classList.contains("hide")) return;
+  const t = dk(new Date()), hm = nowHM(), seen = JSON.parse(LS.get("chalSeen")||"{}");
+  const c = chalsFor(new Date()).find(x => hm >= x.at && !seen[t+x.id] && ((D.days[t]||{}).ch||{})[x.id] === undefined);
+  if(!c) return;
+  seen[t+c.id] = 1; LS.set("chalSeen", JSON.stringify(seen));
+  showModal(`<img src="img/dad.png" style="height:120px" onerror="this.outerHTML='🎯'">`, "🎯 אתגר בונוס חדש!", `${c.e} ${esc(c.t)}<br><b style="color:#fde68a">בונוס: ${c.p} נקודות</b>`, "💪 יאללה!", "", () => { scrollTo({top: $("chalBox").offsetTop - 80, behavior:"smooth"}); });
+  say(c.t, "");
+}
+// התראות בנגן לשבוע הקרוב (הנגן מקפיץ אותן גם כשהסולם סגור)
+function chalNotes(){
+  if(!NB || !NB.setNotes) return;
+  const out = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(Date.now()+i*864e5), k = dk(d);
+    for(const c of chalsFor(d)) if(((D.days[k]||{}).ch||{})[c.id] === undefined) out.push({d:k, at:c.at, id:c.id, t:"🎯 אתגר בונוס – " + c.p + " נקודות!", x: c.e + " " + c.t});
+  }
+  try{ NB.setNotes(JSON.stringify(out)); }catch(e){}
+}
+setInterval(() => { if(CUR==="today"){ renderChal(); chalPop(); } }, 60000);
+
 /* ======================= חלונות ואפקטים ======================= */
 let modalCb = null, MQ = [];
 function showModal(e, title, html, btn, cls, cb){
@@ -1577,6 +1704,7 @@ dragable($("miniPill"), () => { LS.set("miniState","open"); miniScroll(); }, dx 
 /* ======================= התחלה ======================= */
 new Image().src = "img/kid_top.png";
 try{ const j = NB && NB.bpData(); if(j) setTimeout(()=>window.onBp(j), 300); }catch(e){}
+setTimeout(()=>{ chalNotes(); chalPop(); }, 4000);
 $("lad").innerHTML = ladderSvg();
 miniInit();
 renderToday(); syncInfo();
