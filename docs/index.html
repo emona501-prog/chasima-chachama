@@ -85,6 +85,8 @@ font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;border:1p
 .msg audio,.msg video{width:230px;max-width:100%;display:block;margin:4px 0}
 .msg .fl{display:flex;align-items:center;gap:8px;background:#0002;border-radius:10px;padding:7px;font-weight:700}
 .msg .fl button{padding:5px 9px;font-size:12px;border-radius:9px}
+@keyframes flashC{0%,100%{box-shadow:0 0 0 0 #fbbf2400}30%,70%{box-shadow:0 0 0 4px #fbbf24cc}}
+.card.flash{animation:flashC 1.2s 2}
 .upl{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:20;background:#111827ee;border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13px;font-weight:700}
 .lb{position:fixed;inset:0;background:#000e;z-index:30;display:flex;align-items:center;justify-content:center}.lb img{max-width:100%;max-height:100%}
 .bar{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0}
@@ -1178,7 +1180,7 @@ function tab(t){
   $("chatPend").classList.toggle("hide", t!=="chat" || !PEND);
   if(t==="chat"){ fsPoll(true); markRead(); setTimeout(()=>scrollTo(0, document.body.scrollHeight),50); return; }
   document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on", a.dataset.t===t));
-  if(t==="sulam"){ SUL.editing=false; pollSulam(true); }
+  if(t==="sulam"){ SUL.editing=false; Promise.resolve(pollSulam(true)).then(()=>setTimeout(sulFocus, 150)); }
   scrollTo(0,0);
 }
 
@@ -1290,6 +1292,16 @@ async function sulSaveSet(){
   SUL.set.target = Math.max(10, +$("sTarget").value||150); SUL.set.bonus = Math.max(0, +$("sBonus").value||0); SUL.set.rate = Math.max(1, +$("sRate").value||100);
   SUL.set.at = Date.now();
   try{ await fb("PUT", `d/${ID}/s/set`, SUL.set); SUL.editing=false; toast("✅ נשמר – יגיע לנגן תוך כחצי דקה"); }catch(e){ toast("❌ "+e.message); }
+}
+// כשנכנסים ללשונית "סולם" – גוללים ישר למה שמחכה לך: בקשת פרס → רעיון חדש → הודעה שלא נקראה
+function sulFocus(){
+  const pend = Object.values(SUL.kupa||{}).some(x=>x.k==="redeem" && x.st==="wait");
+  const ideas = Object.values(SUL.ideas||{}).some(x=>x.st==="new");
+  const el = pend ? $("sulReqs") : ideas ? $("sulIdeas") : null;
+  if(!el) return;
+  const card = el.closest(".card") || el;
+  scrollTo({top: card.getBoundingClientRect().top + scrollY - 70, behavior: "smooth"});
+  card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
 }
 async function sulIdea(k, st){
   try{
