@@ -256,7 +256,18 @@ public class GuardService extends AccessibilityService {
         acctPkg = on ? current : "";
     }
 
+    private long lastPinLockAt = 0;
+
     private void check(String pkg) {
+        if (Pin.locked(this) && !Rules.isPhone(pkg) && !currentCls.contains("PinLockActivity")) {
+            long now = System.currentTimeMillis();
+            if (now - lastPinLockAt > 1500) {
+                lastPinLockAt = now;
+                performGlobalAction(GLOBAL_ACTION_HOME);
+                main.postDelayed(() -> Pin.show(this), 120);
+            }
+            return;
+        }
         if (Cfg.setupDone(this)) {
             JSONObject lost = Cfg.cfg(this).optJSONObject("lost");
             if (lost != null && lost.optBoolean("on", false)) {

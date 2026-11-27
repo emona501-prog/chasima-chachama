@@ -248,15 +248,14 @@ public class SulamActivity extends Activity {
 
         @JavascriptInterface
         public boolean pinOk(String p) {
-            String pin = Cfg.cfg(SulamActivity.this).optString("pin", "");
-            return !pin.isEmpty() && pin.equals(p);
+            return Pin.check(SulamActivity.this, p);
         }
 
         /** 🛡️ דלת סודית: פתיחת חסימה חכמה (גם כשהאייקון מוסתר) – שם עדיין צריך קוד הורה */
         @JavascriptInterface
         public void openGuard() {
             runOnUiThread(() -> {
-                try { startActivity(new Intent(SulamActivity.this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {}
+                try { startActivity(new android.content.Intent(SulamActivity.this, MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {}
             });
         }
 

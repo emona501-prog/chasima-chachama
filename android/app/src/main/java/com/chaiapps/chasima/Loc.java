@@ -86,10 +86,51 @@ final class Loc {
         } catch (Exception e) { return null; }
     }
 
+    /**
+     * 📡 מיקום לפי רשתות ה-WiFi שהנגן רואה (בלי GPS) – דיוק של עשרות מטרים בעיר.
+     * שולח רק כתובות רשתות (BSSID) לשירות הפתוח BeaconDB.
+     */
+    static JSONObject byWifi(Context c) {
+        try {
+            if (!allowed(c)) return null;
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) c.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm == null) return null;
+            try { wm.startScan(); Thread.sleep(4000); } catch (Exception ignored) {}
+            java.util.List<android.net.wifi.ScanResult> rs = wm.getScanResults();
+            if (rs == null || rs.size() < 2) return null;
+            org.json.JSONArray aps = new org.json.JSONArray();
+            for (android.net.wifi.ScanResult r : rs) {
+                if (r.BSSID == null || (r.SSID != null && r.SSID.endsWith("_nomap"))) continue;
+                aps.put(new JSONObject().put("macAddress", r.BSSID).put("signalStrength", r.level));
+                if (aps.length() >= 20) break;
+            }
+            if (aps.length() < 2) return null;
+            String body = new JSONObject().put("considerIp", false).put("wifiAccessPoints", aps).toString();
+            java.net.HttpURLConnection h = (java.net.HttpURLConnection) new java.net.URL("https://api.beacondb.net/v1/geolocate").openConnection();
+            h.setConnectTimeout(10000); h.setReadTimeout(10000);
+            h.setRequestMethod("POST"); h.setDoOutput(true);
+            h.setRequestProperty("Content-Type", "application/json");
+            h.setRequestProperty("User-Agent", "ChasimaChachama/1.0 (chaiapps)");
+            try (java.io.OutputStream o = h.getOutputStream()) { o.write(body.getBytes("UTF-8")); }
+            if (h.getResponseCode() != 200) return null;
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            try (java.io.InputStream in = h.getInputStream()) { byte[] b = new byte[4096]; int n; while ((n = in.read(b)) > 0) bo.write(b, 0, n); }
+            JSONObject r = new JSONObject(bo.toString("UTF-8"));
+            JSONObject l = r.getJSONObject("location");
+            JSONObject o = new JSONObject();
+            o.put("lat", l.getDouble("lat")); o.put("lng", l.getDouble("lng"));
+            o.put("acc", Math.round(r.optDouble("accuracy", 100))); o.put("wifi", true);
+            o.put("t", System.currentTimeMillis());
+            return o;
+        } catch (Exception e) { return null; }
+    }
+
     static void fresh(Context c, Cb cb0) {
         final Cb cb = (loc, err) -> {
             if (loc != null) { cb0.done(loc, err); return; }
             new Thread(() -> {
+                JSONObject wf = byWifi(c);
+                if (wf != null) { cb0.done(wf, "📡 מיקום לפי רשתות WiFi באזור (דיוק ~" + wf.optLong("acc") + " מ׳)"); return; }
                 JSONObject ip = byIp();
                 if (ip != null) cb0.done(ip, "📶 מיקום משוער לפי האינטרנט" + (ip.optString("city").isEmpty() ? "" : " (" + ip.optString("city") + ")") + " · " + err);
                 else cb0.done(loc, err);

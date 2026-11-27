@@ -237,20 +237,13 @@ public class MainActivity extends Activity {
         c.addView(pin);
         final TextView err = Ui.text(this, c, "", 14, 0xFFFCA5A5, false);
         Ui.button(this, c, "כניסה", Ui.BLUE, v -> {
-            String want = Cfg.cfg(this).optString("pin", "");
-            if (!want.isEmpty() && want.equals(pin.getText().toString().trim())) {
-                Cfg.p(this).edit().putInt("badPin", 0).apply();
+            if (Pin.check(this, pin.getText().toString())) {
                 parentOpen = true;
                 build();
             } else {
-                err.setText("קוד שגוי");
                 pin.setText("");
-                int f = Cfg.p(this).getInt("badPin", 0) + 1;
-                Cfg.p(this).edit().putInt("badPin", f).apply();
-                if (f >= 3) {
-                    Cfg.p(this).edit().putInt("badPin", 0).apply();
-                    new Thread(() -> StealthCam.capture(this, "theft")).start();
-                }
+                if (Pin.locked(this)) { Pin.show(this); finish(); return; }
+                err.setText("קוד שגוי");
             }
         });
     }
